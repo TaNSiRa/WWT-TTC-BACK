@@ -42,7 +42,7 @@ exports.findsome = async (db_input, collection_input, input) => {
 
   const db = client.db(db_input);
   const collection = db.collection(collection_input);
-  let res = await collection.find(input).limit(500).sort({ "_id": -1 }).project({"PO":1,"CP":1,"ALL_DONE":1}).toArray();
+  let res = await collection.find(input).limit(500).sort({ "_id": -1 }).project({ "PO": 1, "CP": 1, "ALL_DONE": 1 }).toArray();
 
   await client.close();
 
@@ -64,7 +64,7 @@ exports.update = async (db_input, collection_input, input1, input2) => {
   return res;
 };
 
-exports.findSAP = async (urls,db_input, collection_input, input) => {
+exports.findSAP = async (urls, db_input, collection_input, input) => {
 
   const client = new MongoClient(urls);
   await client.connect();
@@ -76,4 +76,18 @@ exports.findSAP = async (urls,db_input, collection_input, input) => {
   await client.close();
 
   return res;
+};
+
+exports.delete = async (db_input, collection_input, input) => {
+  const client = new MongoClient(url);
+  await client.connect();
+
+  const db = client.db(db_input);
+  const collection = db.collection(collection_input);
+
+  let result = await collection.deleteOne(input); // หรือลบแค่ 1 ก็ใช้ deleteOne
+
+  await client.close();
+
+  return result;
 };
