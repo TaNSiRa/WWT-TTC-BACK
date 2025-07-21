@@ -21,14 +21,13 @@ exports.insertMany = async (db_input, collection_input, input) => {
 
 };
 
-exports.find = async (db_input, collection_input, input) => {
+exports.find = async (db_input, collection_input, input, SortBy) => {
 
   const client = new MongoClient(url);
   await client.connect();
-
   const db = client.db(db_input);
   const collection = db.collection(collection_input);
-  let res = await collection.find(input).limit(1000).sort({ "_id": -1 }).toArray();
+  let res = await collection.find(input).limit(1000).sort(SortBy).toArray();
 
   await client.close();
 
