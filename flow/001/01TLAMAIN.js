@@ -2547,8 +2547,6 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
-    let updateQueries = '';
-    let returnJobQueries = '';
     for (const data of dataRow) {
       let fields = [];
 
@@ -2574,20 +2572,21 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
         SET ${fields.join(',\n')}
         WHERE ID = '${data.ID}';
         `;
-        updateQueries += query1 + '\n';
+        allQueries += query1 + '\n';
 
         fields = [];
         pushField("JobApprover", req.body.UserAnalysis);
         pushField("JobApproveDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", 'APPROVE ITEM');
+        pushField("Result", data.RESULT_1 ? data.RESULT_1 : data.RESULT_2);
 
         let query2 = `
         UPDATE [WWT].[dbo].[Request]
         SET ${fields.join(',\n')}
         WHERE ID = '${data.ID}';
         `;
-        updateQueries += query2 + '\n';
+        allQueries += query2 + '\n';
 
       } else if (data.REJECT !== '') {
         pushField("JobCode", '');
@@ -2602,17 +2601,17 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
         SET ${fields.join(',\n')}
         WHERE ID = '${data.ID}';
         `;
-        updateQueries += query3 + '\n';
+        allQueries += query3 + '\n';
 
         let query4 = `
         DELETE FROM [WWT].[dbo].[BOD] 
         WHERE ID = '${data.ID}';
         `;
-        updateQueries += query4 + '\n';
+        allQueries += query4 + '\n';
       }
     }
     // console.log(allQueries);
-    let db = await mssql.qurey(updateQueries);
+    let db = await mssql.qurey(allQueries);
     console.log(db);
 
     if (db["rowsAffected"][0] > 0) {
