@@ -1743,16 +1743,16 @@ router.post('/WWT/SearchReceiveSample', async (req, res) => {
   // console.log(req.body);
   if (req.body['Branch'] == 'All' && req.body['INSTRUMENT'] != '') {
     // console.log("case 1");
-    query = `SELECT * From [WWT].[dbo].[Request] WHERE InsName = '${req.body['INSTRUMENT']}' and ItemStatus = 'RECEIVE SAMPLE' order by ReqNo DESC, BottleCode`;
+    query = `SELECT * From [WWT].[dbo].[Request] WHERE InsName = '${req.body['INSTRUMENT']}' and (ItemStatus = 'RECEIVE SAMPLE' OR ItemStatus = 'RECHECK ITEM')  order by ReqNo DESC, BottleCode`;
   } else if (req.body['Branch'] == 'All' && req.body['INSTRUMENT'] == '') {
     // console.log("case 2");
-    query = `SELECT * From [WWT].[dbo].[Request] WHERE ItemStatus = 'RECEIVE SAMPLE' order by ReqNo DESC, BottleCode`;
+    query = `SELECT * From [WWT].[dbo].[Request] WHERE (ItemStatus = 'RECEIVE SAMPLE' OR ItemStatus = 'RECHECK ITEM') order by ReqNo DESC, BottleCode`;
   } else if (req.body['Branch'] != 'All' && req.body['INSTRUMENT'] == '') {
     // console.log("case 2");
-    query = `SELECT * From [WWT].[dbo].[Request] WHERE ReqCode = '${req.body['Branch']}' and ItemStatus = 'RECEIVE SAMPLE' order by ReqNo DESC, BottleCode`;
+    query = `SELECT * From [WWT].[dbo].[Request] WHERE ReqCode = '${req.body['Branch']}' and (ItemStatus = 'RECEIVE SAMPLE' OR ItemStatus = 'RECHECK ITEM') order by ReqNo DESC, BottleCode`;
   } else if (req.body['Branch'] != 'All' && req.body['INSTRUMENT'] != '') {
     // console.log("case 3");
-    query = `SELECT * From [WWT].[dbo].[Request] WHERE ReqCode = '${req.body['Branch']}' and InsName = '${req.body['INSTRUMENT']}' and ItemStatus = 'RECEIVE SAMPLE' order by ReqNo DESC, BottleCode`;
+    query = `SELECT * From [WWT].[dbo].[Request] WHERE ReqCode = '${req.body['Branch']}' and InsName = '${req.body['INSTRUMENT']}' and (ItemStatus = 'RECEIVE SAMPLE' OR ItemStatus = 'RECHECK ITEM') order by ReqNo DESC, BottleCode`;
   }
 
   let db = await mssql.qurey(query);
@@ -1903,6 +1903,7 @@ router.post('/WWT/listNewJob', async (req, res) => {
     const reqBranch = dataRow[0].REQBRANCH;
     const baseJobCode = await generateBaseJobCode(reqBranch, insName);
     let allQueries = '';
+    let itemStatusValue = '';
 
     // STEP 1: UPDATE
     for (const data of dataRow) {
@@ -1917,10 +1918,19 @@ router.post('/WWT/listNewJob', async (req, res) => {
         }
       }
 
+      if (data.ITEMSTATUS === 'RECEIVE SAMPLE') {
+        itemStatusValue = 'LIST ITEM';
+      } else if (data.ITEMSTATUS === 'RECHECK ITEM') {
+        itemStatusValue = 'LIST RECHECK';
+      } else {
+        itemStatusValue = 'LIST ITEM';
+      }
+
       pushField("JobCode", baseJobCode);
       pushField("UserListJob", userListJob);
       pushField("ListJobDate", now);
-      pushField("ItemStatus", 'LIST ITEM');
+      pushField("ItemStatus", itemStatusValue);
+      pushField("JobStatus", 'IN PROCESS');
 
       let query = `
       UPDATE [WWT].[dbo].[Request]
@@ -1997,11 +2007,13 @@ router.post('/WWT/listInsertJob', async (req, res) => {
 
   try {
     let dataRow = JSON.parse(req.body.dataRow);
+    console.log(dataRow);
     let insName = req.body.Instrument;
     let userListJob = req.body.UserListJob;
     const now = ISOToLocal(new Date());
     const baseJobCode = req.body.JobCode;
     let allQueries = '';
+    let itemStatusValue = '';
 
     // STEP 1: UPDATE
     for (const data of dataRow) {
@@ -2016,10 +2028,19 @@ router.post('/WWT/listInsertJob', async (req, res) => {
         }
       }
 
+      if (data.ITEMSTATUS === 'RECEIVE SAMPLE') {
+        itemStatusValue = 'LIST ITEM';
+      } else if (data.ITEMSTATUS === 'RECHECK ITEM') {
+        itemStatusValue = 'LIST RECHECK';
+      } else {
+        itemStatusValue = 'LIST ITEM';
+      }
+
       pushField("JobCode", baseJobCode);
       pushField("UserListJob", userListJob);
       pushField("ListJobDate", now);
-      pushField("ItemStatus", 'LIST ITEM');
+      pushField("ItemStatus", itemStatusValue);
+      pushField("JobStatus", 'IN PROCESS');
 
       let query = `
       UPDATE [WWT].[dbo].[Request]
@@ -2131,7 +2152,7 @@ router.post('/WWT/SearchJobList', async (req, res) => {
   let query = `
   WITH R AS (
     SELECT  *,
-            ROW_NUMBER() OVER (PARTITION BY JobCode ORDER BY ListJobDate DESC) AS rn
+            ROW_NUMBER() OVER (PARTITION BY JobCode ORDER BY AnalysisDue) AS rn
     FROM [WWT].[dbo].[Request]
     ${whereClause}
   )
@@ -2162,8 +2183,12 @@ router.post('/WWT/getJobDetail', async (req, res) => {
   console.log("--getJobDetail--");
   //-------------------------------------
   let output = [];
-  let query = `SELECT * From [WWT].[dbo].[${req.body.Instrument}] WHERE JobCode = '${req.body.JobCode}' order by JobCode`;
-
+  let query = `SELECT I.*, R.ItemStatus
+               FROM [WWT].[dbo].[${req.body.Instrument}] I
+               LEFT JOIN [WWT].[dbo].[Request] R
+                 ON I.ID = R.ID
+               WHERE I.JobCode = '${req.body.JobCode}' AND (I.Status is null OR I.Status = 'APPROVE')
+               ORDER BY I.JobCode;`;
   let db = await mssql.qurey(query);
   // console.log(db);
   if (db["recordsets"].length > 0) {
@@ -2185,7 +2210,13 @@ router.post('/WWT/jobAvailable', async (req, res) => {
   console.log("--jobAvailable--");
   //-------------------------------------
   let output = [];
-  let query = `SELECT * From [WWT].[dbo].[${req.body.Instrument}] WHERE UserListJob = '${req.body.UserListJob}' order by JobCode DESC`;
+  let query = `SELECT I.*, R.JobStatus
+               FROM [WWT].[dbo].[${req.body.Instrument}] I
+               LEFT JOIN [WWT].[dbo].[Request] R
+                 ON I.ID = R.ID
+               WHERE I.UserListJob = '${req.body.UserListJob}' AND R.JobStatus = 'IN PROCESS'
+               ORDER BY I.JobCode;`;
+  // let query = `SELECT * From [WWT].[dbo].[${req.body.Instrument}] WHERE UserListJob = '${req.body.UserListJob}' order by JobCode DESC`;
 
   let db = await mssql.qurey(query);
   // console.log(db);
@@ -2208,11 +2239,100 @@ router.post('/WWT/returnJob', async (req, res) => {
 
   try {
     let dataRow = JSON.parse(req.body.dataRow);
-    console.log(dataRow);
-    let insName = dataRow[0].INSNAME;
-    const baseJobCode = dataRow[0].JOBCODE;
+    let insName = dataRow.INSNAME;
+    const baseJobCode = dataRow.JOBCODE;
     let allQueries = '';
+    let itemStatusValue = '';
+    // STEP 1: UPDATE
 
+    let querySelect = `SELECT * From [WWT].[dbo].[Request] WHERE JobCode = '${baseJobCode}'`;
+    // console.log(querySelect);
+    let db = await mssql.qurey(querySelect);
+
+    if (db["recordsets"].length > 0) {
+      let buffer = db["recordsets"][0];
+      for (const data of buffer) {
+        let fields = [];
+        let itemStatus = data.ItemStatus;
+
+        function pushField(name, value) {
+          if (value !== '') {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          } else {
+            fields.push(`[${name}] = NULL`);
+          }
+        }
+
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+
+        let query = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query + '\n';
+      }
+      let updateJobCode = await mssql.qurey(allQueries);
+      // console.log(allQueries);
+      // STEP 2: CREATE DELETE QUERY
+      if (updateJobCode["rowsAffected"][0] > 0) {
+        console.log("Update Success");
+
+        let query = `
+        DELETE FROM [WWT].[dbo].[${insName}] 
+        WHERE JobCode = '${baseJobCode}';
+        `;
+
+        // console.log(query);
+        let deleteResult = await mssql.qurey(query);
+
+        if (deleteResult["rowsAffected"][0] > 0) {
+          console.log("Insert Success");
+          return res.status(200).json({ message: baseJobCode });
+        } else {
+          console.log("Insert Failed");
+          return res.status(400).json('Insert ไม่สำเร็จ');
+        }
+
+      } else {
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทไม่สำเร็จ');
+      }
+    } else {
+      return res.status(400).json('ไม่พบข้อมูล');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/returnRequest', async (req, res) => {
+  console.log("--returnRequest--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    console.log(dataRow);
+    let insName = dataRow.JOBCODE?.split('-').pop();
+    let ID = dataRow.ID;
+    const baseJobCode = dataRow.JOBCODE;
+    let allQueries = '';
+    let itemStatusValue = '';
     // STEP 1: UPDATE
     let fields = [];
 
@@ -2225,45 +2345,64 @@ router.post('/WWT/returnJob', async (req, res) => {
       }
     }
 
-    pushField("JobCode", '');
-    pushField("UserListJob", '');
-    pushField("ListJobDate", '');
-    pushField("UserAnalysis", '');
-    pushField("AnalysisDate", '');
-    pushField("ItemStatus", 'RECEIVE SAMPLE');
+    let querySelect = `SELECT * From [WWT].[dbo].[Request] WHERE ID = '${ID}'`;
+    // console.log(querySelect);
+    let db = await mssql.qurey(querySelect);
 
-    let query = `
+    if (db["recordsets"].length > 0) {
+      let buffer = db["recordsets"][0];
+      for (const data of buffer) {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+
+        let query = `
       UPDATE [WWT].[dbo].[Request]
       SET ${fields.join(',\n')}
-      WHERE JobCode = '${baseJobCode}';
+      WHERE ID = '${data.ID}';
       `;
-    allQueries += query + '\n';
+        allQueries += query + '\n';
+        fields = [];
+      }
+      let updateJobCode = await mssql.qurey(allQueries);
+      // console.log(allQueries);
+      // STEP 2: CREATE DELETE QUERY
+      if (updateJobCode["rowsAffected"][0] > 0) {
+        console.log("Update Success");
 
-    let updateJobCode = await mssql.qurey(allQueries);
-    // console.log(allQueries);
-    // STEP 2: CREATE DELETE QUERY
-    if (updateJobCode["rowsAffected"][0] > 0) {
-      console.log("Update Success");
-
-      let query = `
+        let query = `
         DELETE FROM [WWT].[dbo].[${insName}] 
-        WHERE JobCode = '${baseJobCode}';
+        WHERE ID = '${ID}';
         `;
 
-      // console.log(query);
-      let deleteResult = await mssql.qurey(query);
+        // console.log(query);
+        let deleteResult = await mssql.qurey(query);
 
-      if (deleteResult["rowsAffected"][0] > 0) {
-        console.log("Insert Success");
-        return res.status(200).json({ message: baseJobCode });
+        if (deleteResult["rowsAffected"][0] > 0) {
+          return res.status(200).json({ message: 'Success' });
+        } else {
+          return res.status(400).json('Delete ไม่สำเร็จ');
+        }
+
       } else {
-        console.log("Insert Failed");
-        return res.status(400).json('Insert ไม่สำเร็จ');
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทไม่สำเร็จ');
       }
-
     } else {
-      console.log("Update Failed");
-      return res.status(400).json('อัปเดทไม่สำเร็จ');
+      return res.status(400).json('ไม่พบข้อมูล');
     }
   } catch (err) {
     console.error(err);
@@ -2496,6 +2635,7 @@ router.post('/WWT/SaveBOD', async (req, res) => {
     // console.log(db);
     if (db["rowsAffected"][0] > 0) {
       let updateQuery = '';
+      let itemStatusValue = '';
 
       for (const data of dataRow) {
         let fields = [];
@@ -2507,11 +2647,19 @@ router.post('/WWT/SaveBOD', async (req, res) => {
             fields.push(`[${name}] = NULL`);
           }
         }
-
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'FINISH ITEM';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'FINISH RECHECK';
+        } else {
+          itemStatusValue = 'FINISH ITEM';
+        }
         pushField("UserAnalysis", req.body.UserAnalysis);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
-        pushField("ItemStatus", 'FINISH ITEM');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", 'FINISH');
 
         let query = `
           UPDATE [WWT].[dbo].[Request]
@@ -2547,6 +2695,7 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+    let itemStatusValue = '';
     for (const data of dataRow) {
       let fields = [];
 
@@ -2563,8 +2712,9 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
         }
       }
       if (data.JOBAPPROVER !== '') {
-        pushField("JobApprover", req.body.UserAnalysis);
-        pushField("JobApproveDate", now);
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Status", 'APPROVE');
         pushField("Remark_Job", data.REMARKJOB);
 
         let query1 = `
@@ -2575,11 +2725,25 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
         allQueries += query1 + '\n';
 
         fields = [];
+        let itemStatus = data.ItemStatus;
+        // if (itemStatus === 'FINISH ITEM') {
+        //   itemStatusValue = 'APPROVE ITEM';
+        // } else if (itemStatus === 'FINISH RECHECK') {
+        //   itemStatusValue = 'APPROVE RECHECK';
+        // } else {
+        //   itemStatusValue = 'APPROVE ITEM';
+        // }
         pushField("JobApprover", req.body.UserAnalysis);
         pushField("JobApproveDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", 'APPROVE ITEM');
-        pushField("Result", data.RESULT_1 ? data.RESULT_1 : data.RESULT_2);
+        pushField("JobStatus", 'COMPLETE');
+        if (itemStatus === 'FINISH ITEM') {
+          pushField("Result_1", data.RESULT_1 ? data.RESULT_1 : data.RESULT_2);
+        } else if (itemStatus === 'FINISH RECHECK') {
+          pushField("Result_2", data.RESULT_1 ? data.RESULT_1 : data.RESULT_2);
+        }
+        pushField("ResultApprove", data.RESULT_1 ? data.RESULT_1 : data.RESULT_2);
 
         let query2 = `
         UPDATE [WWT].[dbo].[Request]
@@ -2589,12 +2753,26 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
         allQueries += query2 + '\n';
 
       } else if (data.REJECT !== '') {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'FINISH ITEM') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else if (itemStatus === 'FINISH RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
         pushField("JobCode", '');
         pushField("UserListJob", '');
         pushField("ListJobDate", '');
         pushField("UserAnalysis", '');
         pushField("AnalysisDate", '');
-        pushField("ItemStatus", 'RECEIVE SAMPLE');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+        if (itemStatus === 'FINISH ITEM') {
+          pushField("Result_1", data.RESULT_1 ? data.RESULT_1 : data.RESULT_2);
+        } else if (itemStatus === 'FINISH RECHECK') {
+          pushField("Result_2", data.RESULT_1 ? data.RESULT_1 : data.RESULT_2);
+        }
 
         let query3 = `
         UPDATE [WWT].[dbo].[Request]
@@ -2603,11 +2781,24 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
         `;
         allQueries += query3 + '\n';
 
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+
         let query4 = `
-        DELETE FROM [WWT].[dbo].[BOD] 
+        UPDATE [WWT].[dbo].[BOD]
+        SET ${fields.join(',\n')}
         WHERE ID = '${data.ID}';
         `;
         allQueries += query4 + '\n';
+
+        // let query4 = `
+        // DELETE FROM [WWT].[dbo].[BOD] 
+        // WHERE ID = '${data.ID}';
+        // `;
+        // allQueries += query4 + '\n';
       }
     }
     // console.log(allQueries);
@@ -2624,6 +2815,28 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/historyGraph', async (req, res) => {
+  //-------------------------------------
+  console.log("--historyGraph--");
+  //-------------------------------------
+  let output = [];
+  // console.log(req.body.data);
+  let data = req.body.data;
+  let query = `SELECT TOP 10 * From [WWT].[dbo].[Request] 
+                WHERE CustName = '${data.CUSTNAME}' AND SampNo = '${data.SAMPNO}' AND SampName = '${data.SAMPNAME}' AND ItemName = '${data.ITEMNAME}'
+                AND ResultApprove != ''
+                ORDER BY SampDate`;
+  // console.log(query);
+  let db = await mssql.qurey(query);
+  if (db["recordsets"].length > 0) {
+    let buffer = db["recordsets"][0];
+    output = buffer;
+    return res.status(200).json(output);
+  } else {
+    return res.status(400).json('ไม่พบข้อมูล');
   }
 });
 
