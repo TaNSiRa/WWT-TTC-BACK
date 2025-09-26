@@ -2138,11 +2138,11 @@ router.post('/WWT/SearchJobList', async (req, res) => {
     conditions.push(`UserListJob = '${Username}'`);
   }
   if (ListCheck && FinishCheck) {
-    conditions.push(`ItemStatus IN ('LIST ITEM','LIST RECHECK','LIST RECONFIRM', 'FINISH ITEM', 'FINISH RECONFIRM', 'FINISH RECHECK')`);
+    conditions.push(`ItemStatus IN ('LIST ITEM','LIST RECHECK', 'FINISH ITEM', 'FINISH RECHECK')`);
   } else if (ListCheck) {
-    conditions.push(`ItemStatus IN ('LIST ITEM', 'LIST RECHECK', 'LIST RECONFIRM')`);
+    conditions.push(`ItemStatus IN ('LIST ITEM', 'LIST RECHECK')`);
   } else if (FinishCheck) {
-    conditions.push(`ItemStatus IN ('FINISH ITEM', 'FINISH RECONFIRM', 'FINISH RECHECK')`);
+    conditions.push(`ItemStatus IN ('FINISH ITEM', 'FINISH RECHECK')`);
   } else {
     return res.status(400).json({ message: 'กรุณาเลือก LIST หรือ FINISH' });
   }
@@ -2189,6 +2189,7 @@ router.post('/WWT/getJobDetail', async (req, res) => {
                  ON I.ID = R.ID
                WHERE I.JobCode = '${req.body.JobCode}' AND (I.Status is null OR I.Status = 'APPROVE')
                ORDER BY I.JobCode;`;
+  // console.log(query);
   let db = await mssql.qurey(query);
   // console.log(db);
   if (db["recordsets"].length > 0) {
@@ -2528,6 +2529,71 @@ router.post('/WWT/TempSaveBOD', async (req, res) => {
   }
 });
 
+router.post('/WWT/TempSavePH', async (req, res) => {
+  console.log("--TempSavePH--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    let action = req.body.Action;
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("QCS_pH_1", data.QCS_pH_1);
+      pushField("QCS_Temp_1", data.QCS_Temp_1);
+      pushField("QCS_pH_2", data.QCS_pH_2);
+      pushField("QCS_Temp_2", data.QCS_Temp_2);
+      pushField("QCS_Diff", data.QCS_Diff);
+      pushField("QCS_Avg", data.QCS_Avg);
+      pushField("QCS_RPD", data.QCS_RPD);
+      pushField("QCS_Slope", data.QCS_Slope);
+      pushField("pH_1_R1", data.pH_1_R1);
+      pushField("Temp_1_R1", data.Temp_1_R1);
+      pushField("pH_2_R1", data.pH_2_R1);
+      pushField("Temp_2_R1", data.Temp_2_R1);
+      pushField("Diff_R1", data.Diff_R1);
+      pushField("Avg_R1", data.Avg_R1);
+      pushField("RPD", data.RPD);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[pH]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      // return res.status(400).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
 router.post('/WWT/SaveBOD', async (req, res) => {
   console.log("--SaveBOD--");
 
@@ -2688,6 +2754,113 @@ router.post('/WWT/SaveBOD', async (req, res) => {
   }
 });
 
+router.post('/WWT/SavePH', async (req, res) => {
+  console.log("--SavePH--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("QCS_pH_1", data.QCS_pH_1);
+      pushField("QCS_Temp_1", data.QCS_Temp_1);
+      pushField("QCS_pH_2", data.QCS_pH_2);
+      pushField("QCS_Temp_2", data.QCS_Temp_2);
+      pushField("QCS_Diff", data.QCS_Diff);
+      pushField("QCS_Avg", data.QCS_Avg);
+      pushField("QCS_RPD", data.QCS_RPD);
+      pushField("QCS_Slope", data.QCS_Slope);
+      pushField("pH_1_R1", data.pH_1_R1);
+      pushField("Temp_1_R1", data.Temp_1_R1);
+      pushField("pH_2_R1", data.pH_2_R1);
+      pushField("Temp_2_R1", data.Temp_2_R1);
+      pushField("Diff_R1", data.Diff_R1);
+      pushField("Avg_R1", data.Avg_R1);
+      pushField("RPD", data.RPD);
+      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("AnalysisDate", now);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[pH]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      let updateQuery = '';
+      let itemStatusValue = '';
+
+      for (const data of dataRow) {
+        let fields = [];
+        function pushField(name, value) {
+          if (value !== '') {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = '${escapedValue}'`);
+          } else {
+            fields.push(`[${name}] = NULL`);
+          }
+        }
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'FINISH ITEM';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'FINISH RECHECK';
+        } else {
+          itemStatusValue = 'FINISH ITEM';
+        }
+        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("AnalysisDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", 'FINISH');
+
+        let query = `
+          UPDATE [WWT].[dbo].[Request]
+          SET ${fields.join(',\n')}
+          WHERE ID = '${data.ID}';
+          `;
+        updateQuery += query + '\n';
+      }
+      // console.log(insertQuery);
+      let updateRequest = await mssql.qurey(updateQuery);
+      if (updateRequest["rowsAffected"][0] > 0) {
+        console.log("Update Success");
+        return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      } else {
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+      }
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
 router.post('/WWT/approveRejectBOD', async (req, res) => {
   console.log("--approveRejectBOD--");
 
@@ -2711,7 +2884,7 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
           fields.push(`[${name}] = NULL`);
         }
       }
-      if (data.JOBAPPROVER !== '') {
+      if (data.DECISIONUSER !== '') {
         pushField("DecisionUser", req.body.UserAnalysis);
         pushField("DecisionDate", now);
         pushField("Status", 'APPROVE');
@@ -2789,6 +2962,136 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
 
         let query4 = `
         UPDATE [WWT].[dbo].[BOD]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query4 + '\n';
+
+        // let query4 = `
+        // DELETE FROM [WWT].[dbo].[BOD] 
+        // WHERE ID = '${data.ID}';
+        // `;
+        // allQueries += query4 + '\n';
+      }
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    console.log(db);
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/approveRejectPH', async (req, res) => {
+  console.log("--approveRejectPH--");
+  console.log(req.body);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    let itemStatusValue = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+      if (data.DECISIONUSER !== '') {
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Status", 'APPROVE');
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query1 = `
+        UPDATE [WWT].[dbo].[pH]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query1 + '\n';
+
+        fields = [];
+        let itemStatus = data.ItemStatus;
+        // if (itemStatus === 'FINISH ITEM') {
+        //   itemStatusValue = 'APPROVE ITEM';
+        // } else if (itemStatus === 'FINISH RECHECK') {
+        //   itemStatusValue = 'APPROVE RECHECK';
+        // } else {
+        //   itemStatusValue = 'APPROVE ITEM';
+        // }
+        pushField("JobApprover", req.body.UserAnalysis);
+        pushField("JobApproveDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", 'APPROVE ITEM');
+        pushField("JobStatus", 'COMPLETE');
+        if (itemStatus === 'FINISH ITEM') {
+          pushField("Result_1", data.Avg_R1);
+        } else if (itemStatus === 'FINISH RECHECK') {
+          pushField("Result_2", data.Avg_R1);
+        }
+        pushField("ResultApprove", data.Avg_R1);
+
+        let query2 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query2 + '\n';
+
+      } else if (data.REJECT !== '') {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'FINISH ITEM') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else if (itemStatus === 'FINISH RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+        if (itemStatus === 'FINISH ITEM') {
+          pushField("Result_1", data.Avg_R1);
+        } else if (itemStatus === 'FINISH RECHECK') {
+          pushField("Result_2", data.Avg_R1);
+        }
+
+        let query3 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query3 + '\n';
+
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query4 = `
+        UPDATE [WWT].[dbo].[pH]
         SET ${fields.join(',\n')}
         WHERE ID = '${data.ID}';
         `;
