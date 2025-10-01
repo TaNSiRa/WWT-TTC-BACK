@@ -2206,6 +2206,69 @@ router.post('/WWT/getJobDetail', async (req, res) => {
 
 });
 
+router.post('/WWT/getJobDetailFromLandingPage', async (req, res) => {
+  console.log("--getJobDetailFromLandingPage--");
+  let output = [];
+
+  try {
+    const instrument = req.body.Instrument;
+    const bottleCode = req.body.BottleCode;
+    const dropdownR = req.body.DropdownR;
+
+    let jobCodeToSearch = req.body.JobCode; // default ใช้จาก frontend
+    // console.log(req.body);
+    // ถ้ามีส่ง BottleCode + DropdownR เข้ามา -> เข้าเงื่อนไขตรวจสอบ
+    if (bottleCode && dropdownR) {
+      let checkQuery = `
+        SELECT ID_${instrument} as RowID, JobCode, BottleCode
+        FROM [WWT].[dbo].[${instrument}]
+        WHERE BottleCode = '${bottleCode}'
+      `;
+      let checkDb = await mssql.qurey(checkQuery);
+
+      if (checkDb.recordset.length > 0) {
+        let rowList = checkDb.recordset;
+        let selectedRow;
+
+        if (dropdownR === "R1") {
+          selectedRow = rowList.reduce((prev, curr) => prev.RowID < curr.RowID ? prev : curr);
+        } else if (dropdownR === "R3") {
+          selectedRow = rowList.reduce((prev, curr) => prev.RowID > curr.RowID ? prev : curr);
+        }
+
+        if (selectedRow) {
+          jobCodeToSearch = selectedRow.JobCode;
+        }
+      }
+    }
+
+    if (!jobCodeToSearch) {
+      return res.status(200).json(output);
+    }
+    let query = `
+      SELECT I.*, R.ItemStatus
+      FROM [WWT].[dbo].[${instrument}] I
+      LEFT JOIN [WWT].[dbo].[Request] R
+        ON I.ID = R.ID
+      WHERE I.JobCode = '${jobCodeToSearch}'
+      ORDER BY I.JobCode;
+    `;
+    // console.log(query);
+    let db = await mssql.qurey(query);
+
+    if (db.recordset.length > 0) {
+      output = db.recordset;
+      return res.status(200).json(output);
+    } else {
+      return res.status(400).json('ไม่พบข้อมูล');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดของเซิร์ฟเวอร์');
+  }
+});
+
+
 router.post('/WWT/jobAvailable', async (req, res) => {
   //-------------------------------------
   console.log("--jobAvailable--");
@@ -2386,7 +2449,7 @@ router.post('/WWT/returnRequest', async (req, res) => {
 
         let query = `
         DELETE FROM [WWT].[dbo].[${insName}] 
-        WHERE ID = '${ID}';
+        WHERE ID = '${ID}' AND JobCode = '${baseJobCode}';
         `;
 
         // console.log(query);
@@ -2508,7 +2571,7 @@ router.post('/WWT/TempSaveBOD', async (req, res) => {
       let query = `
       UPDATE [WWT].[dbo].[BOD]
       SET ${fields.join(',\n')}
-      WHERE ID = '${data.ID}';
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
       `;
       allQueries += query + '\n';
     }
@@ -2573,7 +2636,68 @@ router.post('/WWT/TempSavePH', async (req, res) => {
       let query = `
       UPDATE [WWT].[dbo].[pH]
       SET ${fields.join(',\n')}
-      WHERE ID = '${data.ID}';
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      // return res.status(400).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/TempSaveTF', async (req, res) => {
+  console.log("--TempSaveTF--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    let action = req.body.Action;
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("QCS_DilutionTime", data.QCS_DilutionTime);
+      pushField("QCS_F_1", data.QCS_F_1);
+      pushField("QCS_F_2", data.QCS_F_2);
+      pushField("QCS_F_Xbar", data.QCS_F_Xbar);
+      pushField("QCS_RPD", data.QCS_RPD);
+      pushField("QCS_Recovery", data.QCS_Recovery);
+      pushField("DilutionTime", data.DilutionTime);
+      pushField("F_1", data.F_1);
+      pushField("F_2", data.F_2);
+      pushField("F_Xbar", data.F_Xbar);
+      pushField("RPD", data.RPD);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[TF]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
       `;
       allQueries += query + '\n';
     }
@@ -2692,7 +2816,7 @@ router.post('/WWT/SaveBOD', async (req, res) => {
       let query = `
       UPDATE [WWT].[dbo].[BOD]
       SET ${fields.join(',\n')}
-      WHERE ID = '${data.ID}';
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
       `;
       allQueries += query + '\n';
     }
@@ -2730,7 +2854,7 @@ router.post('/WWT/SaveBOD', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -2799,7 +2923,110 @@ router.post('/WWT/SavePH', async (req, res) => {
       let query = `
       UPDATE [WWT].[dbo].[pH]
       SET ${fields.join(',\n')}
-      WHERE ID = '${data.ID}';
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      let updateQuery = '';
+      let itemStatusValue = '';
+
+      for (const data of dataRow) {
+        let fields = [];
+        function pushField(name, value) {
+          if (value !== '') {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = '${escapedValue}'`);
+          } else {
+            fields.push(`[${name}] = NULL`);
+          }
+        }
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'FINISH ITEM';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'FINISH RECHECK';
+        } else {
+          itemStatusValue = 'FINISH ITEM';
+        }
+        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("AnalysisDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", 'FINISH');
+
+        let query = `
+          UPDATE [WWT].[dbo].[Request]
+          SET ${fields.join(',\n')}
+          WHERE ID = '${data.ID}';
+          `;
+        updateQuery += query + '\n';
+      }
+      // console.log(insertQuery);
+      let updateRequest = await mssql.qurey(updateQuery);
+      if (updateRequest["rowsAffected"][0] > 0) {
+        console.log("Update Success");
+        return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      } else {
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+      }
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/SaveTF', async (req, res) => {
+  console.log("--SaveTF--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("QCS_DilutionTime", data.QCS_DilutionTime);
+      pushField("QCS_F_1", data.QCS_F_1);
+      pushField("QCS_F_2", data.QCS_F_2);
+      pushField("QCS_F_Xbar", data.QCS_F_Xbar);
+      pushField("QCS_RPD", data.QCS_RPD);
+      pushField("QCS_Recovery", data.QCS_Recovery);
+      pushField("DilutionTime", data.DilutionTime);
+      pushField("F_1", data.F_1);
+      pushField("F_2", data.F_2);
+      pushField("F_Xbar", data.F_Xbar);
+      pushField("RPD", data.RPD);
+      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("AnalysisDate", now);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[TF]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
       `;
       allQueries += query + '\n';
     }
@@ -2884,7 +3111,7 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
           fields.push(`[${name}] = NULL`);
         }
       }
-      if (data.DECISIONUSER !== '') {
+      if (data.STATUS === 'APPROVE') {
         pushField("DecisionUser", req.body.UserAnalysis);
         pushField("DecisionDate", now);
         pushField("Status", 'APPROVE');
@@ -2893,7 +3120,7 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
         let query1 = `
         UPDATE [WWT].[dbo].[BOD]
         SET ${fields.join(',\n')}
-        WHERE ID = '${data.ID}';
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
         `;
         allQueries += query1 + '\n';
 
@@ -2925,7 +3152,7 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
         `;
         allQueries += query2 + '\n';
 
-      } else if (data.REJECT !== '') {
+      } else if (data.STATUS === 'REJECT') {
         let itemStatus = data.ItemStatus;
         if (itemStatus === 'FINISH ITEM') {
           itemStatusValue = 'RECHECK ITEM';
@@ -2963,15 +3190,9 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
         let query4 = `
         UPDATE [WWT].[dbo].[BOD]
         SET ${fields.join(',\n')}
-        WHERE ID = '${data.ID}';
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
         `;
         allQueries += query4 + '\n';
-
-        // let query4 = `
-        // DELETE FROM [WWT].[dbo].[BOD] 
-        // WHERE ID = '${data.ID}';
-        // `;
-        // allQueries += query4 + '\n';
       }
     }
     // console.log(allQueries);
@@ -3023,19 +3244,12 @@ router.post('/WWT/approveRejectPH', async (req, res) => {
         let query1 = `
         UPDATE [WWT].[dbo].[pH]
         SET ${fields.join(',\n')}
-        WHERE ID = '${data.ID}';
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
         `;
         allQueries += query1 + '\n';
 
         fields = [];
         let itemStatus = data.ItemStatus;
-        // if (itemStatus === 'FINISH ITEM') {
-        //   itemStatusValue = 'APPROVE ITEM';
-        // } else if (itemStatus === 'FINISH RECHECK') {
-        //   itemStatusValue = 'APPROVE RECHECK';
-        // } else {
-        //   itemStatusValue = 'APPROVE ITEM';
-        // }
         pushField("JobApprover", req.body.UserAnalysis);
         pushField("JobApproveDate", now);
         pushField("Remark_Job", data.REMARKJOB);
@@ -3093,20 +3307,131 @@ router.post('/WWT/approveRejectPH', async (req, res) => {
         let query4 = `
         UPDATE [WWT].[dbo].[pH]
         SET ${fields.join(',\n')}
-        WHERE ID = '${data.ID}';
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
         `;
         allQueries += query4 + '\n';
-
-        // let query4 = `
-        // DELETE FROM [WWT].[dbo].[BOD] 
-        // WHERE ID = '${data.ID}';
-        // `;
-        // allQueries += query4 + '\n';
       }
     }
     // console.log(allQueries);
     let db = await mssql.qurey(allQueries);
     console.log(db);
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/approveRejectTF', async (req, res) => {
+  console.log("--approveRejectTF--");
+  console.log(req.body);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    let itemStatusValue = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+      if (data.DECISIONUSER !== '') {
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Status", 'APPROVE');
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query1 = `
+        UPDATE [WWT].[dbo].[TF]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query1 + '\n';
+
+        fields = [];
+        let itemStatus = data.ItemStatus;
+        pushField("JobApprover", req.body.UserAnalysis);
+        pushField("JobApproveDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", 'APPROVE ITEM');
+        pushField("JobStatus", 'COMPLETE');
+        if (itemStatus === 'FINISH ITEM') {
+          pushField("Result_1", data.F_Xbar);
+        } else if (itemStatus === 'FINISH RECHECK') {
+          pushField("Result_2", data.F_Xbar);
+        }
+        pushField("ResultApprove", data.F_Xbar);
+
+        let query2 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query2 + '\n';
+
+      } else if (data.REJECT !== '') {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'FINISH ITEM') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else if (itemStatus === 'FINISH RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+        if (itemStatus === 'FINISH ITEM') {
+          pushField("Result_1", data.F_Xbar);
+        } else if (itemStatus === 'FINISH RECHECK') {
+          pushField("Result_2", data.F_Xbar);
+        }
+
+        let query3 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query3 + '\n';
+
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query4 = `
+        UPDATE [WWT].[dbo].[TF]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query4 + '\n';
+      }
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
 
     if (db["rowsAffected"][0] > 0) {
       console.log("Update Success");
