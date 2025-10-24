@@ -2898,6 +2898,88 @@ router.post('/WWT/TempSaveTSS', async (req, res) => {
   }
 });
 
+router.post('/WWT/TempSaveCOD', async (req, res) => {
+  console.log("--TempSaveCOD--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    console.log(dataRow);
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("STD_Titrant_Blank", data.STD_Titrant_Blank);
+      pushField("STD_QC_FAS", data.STD_QC_FAS);
+      pushField("Blank_Blank", data.Blank_Blank);
+      pushField("LFB_Dilute", data.LFB_Dilute);
+      pushField("LFB_SampleUse", data.LFB_SampleUse);
+      pushField("LFB_Titrant_sample", data.LFB_Titrant_sample);
+      pushField("LFB_Titrant_Blank_Sample", data.LFB_Titrant_Blank_Sample);
+      pushField("LFB_Cal", data.LFB_Cal);
+      pushField("LFB_Recovery", data.LFB_Recovery);
+      pushField("LFM1_Dilute", data.LFM1_Dilute);
+      pushField("LFM1_SampleUse", data.LFM1_SampleUse);
+      pushField("LFM1_Titrant_sample", data.LFM1_Titrant_sample);
+      pushField("LFM1_Titrant_Blank_Sample", data.LFM1_Titrant_Blank_Sample);
+      pushField("LFM1_Cal", data.LFM1_Cal);
+      pushField("LFM1_RPD", data.LFM1_RPD);
+      pushField("LFM1_Recovery", data.LFM1_Recovery);
+      pushField("LFM2_Dilute", data.LFM2_Dilute);
+      pushField("LFM2_SampleUse", data.LFM2_SampleUse);
+      pushField("LFM2_Titrant_sample", data.LFM2_Titrant_sample);
+      pushField("LFM2_Titrant_Blank_Sample", data.LFM2_Titrant_Blank_Sample);
+      pushField("LFM2_Cal", data.LFM2_Cal);
+      pushField("LFM2_Recovery", data.LFM2_Recovery);
+      pushField("Dilute_1", data.Dilute_1);
+      pushField("SampleUse_1", data.SampleUse_1);
+      pushField("Titrant_sample_1", data.Titrant_sample_1);
+      pushField("Titrant_Blank_Sample_1", data.Titrant_Blank_Sample_1);
+      pushField("Cal_1", data.Cal_1);
+      pushField("Dilute_2", data.Dilute_2);
+      pushField("SampleUse_2", data.SampleUse_2);
+      pushField("Titrant_sample_2", data.Titrant_sample_2);
+      pushField("Titrant_Blank_Sample_2", data.Titrant_Blank_Sample_2);
+      pushField("Cal_2", data.Cal_2);
+      pushField("Avg", data.Avg);
+      pushField("RPD", data.RPD);
+      pushField("Select_L", data.Select_L);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[COD]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
 router.post('/WWT/SaveBOD', async (req, res) => {
   console.log("--SaveBOD--");
 
@@ -3477,7 +3559,7 @@ router.post('/WWT/SaveTSS', async (req, res) => {
       `;
       allQueries += query + '\n';
     }
-    console.log(allQueries);
+    // console.log(allQueries);
     let db = await mssql.qurey(allQueries);
     if (db["rowsAffected"][0] > 0) {
       let updateQuery = '';
@@ -3514,7 +3596,132 @@ router.post('/WWT/SaveTSS', async (req, res) => {
           `;
         updateQuery += query + '\n';
       }
-      console.log(updateQuery);
+      // console.log(updateQuery);
+      let updateRequest = await mssql.qurey(updateQuery);
+      if (updateRequest["rowsAffected"][0] > 0) {
+        console.log("Update Success");
+        return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      } else {
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+      }
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/SaveCOD', async (req, res) => {
+  console.log("--SaveCOD--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("STD_Titrant_Blank", data.STD_Titrant_Blank);
+      pushField("STD_QC_FAS", data.STD_QC_FAS);
+      pushField("Blank_Blank", data.Blank_Blank);
+      pushField("LFB_Dilute", data.LFB_Dilute);
+      pushField("LFB_SampleUse", data.LFB_SampleUse);
+      pushField("LFB_Titrant_sample", data.LFB_Titrant_sample);
+      pushField("LFB_Titrant_Blank_Sample", data.LFB_Titrant_Blank_Sample);
+      pushField("LFB_Cal", data.LFB_Cal);
+      pushField("LFB_Recovery", data.LFB_Recovery);
+      pushField("LFM1_Dilute", data.LFM1_Dilute);
+      pushField("LFM1_SampleUse", data.LFM1_SampleUse);
+      pushField("LFM1_Titrant_sample", data.LFM1_Titrant_sample);
+      pushField("LFM1_Titrant_Blank_Sample", data.LFM1_Titrant_Blank_Sample);
+      pushField("LFM1_Cal", data.LFM1_Cal);
+      pushField("LFM1_RPD", data.LFM1_RPD);
+      pushField("LFM1_Recovery", data.LFM1_Recovery);
+      pushField("LFM2_Dilute", data.LFM2_Dilute);
+      pushField("LFM2_SampleUse", data.LFM2_SampleUse);
+      pushField("LFM2_Titrant_sample", data.LFM2_Titrant_sample);
+      pushField("LFM2_Titrant_Blank_Sample", data.LFM2_Titrant_Blank_Sample);
+      pushField("LFM2_Cal", data.LFM2_Cal);
+      pushField("LFM2_Recovery", data.LFM2_Recovery);
+      pushField("Dilute_1", data.Dilute_1);
+      pushField("SampleUse_1", data.SampleUse_1);
+      pushField("Titrant_sample_1", data.Titrant_sample_1);
+      pushField("Titrant_Blank_Sample_1", data.Titrant_Blank_Sample_1);
+      pushField("Cal_1", data.Cal_1);
+      pushField("Dilute_2", data.Dilute_2);
+      pushField("SampleUse_2", data.SampleUse_2);
+      pushField("Titrant_sample_2", data.Titrant_sample_2);
+      pushField("Titrant_Blank_Sample_2", data.Titrant_Blank_Sample_2);
+      pushField("Cal_2", data.Cal_2);
+      pushField("Avg", data.Avg);
+      pushField("RPD", data.RPD);
+      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("AnalysisDate", now);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[COD]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    if (db["rowsAffected"][0] > 0) {
+      let updateQuery = '';
+      let itemStatusValue = '';
+
+      for (const data of dataRow) {
+        let fields = [];
+        function pushField(name, value) {
+          if (value !== '') {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = '${escapedValue}'`);
+          } else {
+            fields.push(`[${name}] = NULL`);
+          }
+        }
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'FINISH ITEM';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'FINISH RECHECK';
+        } else {
+          itemStatusValue = 'FINISH ITEM';
+        }
+        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("AnalysisDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", 'FINISH');
+
+        let query = `
+          UPDATE [WWT].[dbo].[Request]
+          SET ${fields.join(',\n')}
+          WHERE ID = '${data.ID}';
+          `;
+        updateQuery += query + '\n';
+      }
+      // console.log(updateQuery);
       let updateRequest = await mssql.qurey(updateQuery);
       if (updateRequest["rowsAffected"][0] > 0) {
         console.log("Update Success");
@@ -4030,7 +4237,7 @@ router.post('/WWT/approveRejectTDS', async (req, res) => {
 
 router.post('/WWT/approveRejectTSS', async (req, res) => {
   console.log("--approveRejectTSS--");
-  console.log(req.body);
+  // console.log(req.body);
   try {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
@@ -4141,6 +4348,142 @@ router.post('/WWT/approveRejectTSS', async (req, res) => {
 
         let query4 = `
         UPDATE [WWT].[dbo].[TSS]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query4 + '\n';
+      }
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/approveRejectCOD', async (req, res) => {
+  console.log("--approveRejectCOD--");
+  // console.log(req.body);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    let itemStatusValue = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+      if (data.DECISIONUSER !== '') {
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Status", 'APPROVE');
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query1 = `
+        UPDATE [WWT].[dbo].[COD]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query1 + '\n';
+
+        fields = [];
+        let itemStatus = data.ItemStatus;
+        pushField("JobApprover", req.body.UserAnalysis);
+        pushField("JobApproveDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", 'APPROVE ITEM');
+        pushField("JobStatus", 'COMPLETE');
+        if (itemStatus === 'FINISH ITEM') {
+          if (data.Avg !== null && data.Avg !== undefined && data.Avg !== '') {
+            pushField("Result_1", data.Avg);
+            pushField("ResultApprove", data.Avg);
+          } else {
+            pushField("Result_1", data.Cal_1);
+            pushField("ResultApprove", data.Cal_1);
+          }
+        } else if (itemStatus === 'FINISH RECHECK') {
+          if (data.Avg !== null && data.Avg !== undefined && data.Avg !== '') {
+            pushField("Result_2", data.Avg);
+            pushField("ResultApprove", data.Avg);
+          } else {
+            pushField("Result_2", data.Cal_1);
+            pushField("ResultApprove", data.Cal_1);
+          }
+        }
+
+        let query2 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query2 + '\n';
+
+      } else if (data.REJECT !== '') {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'FINISH ITEM') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else if (itemStatus === 'FINISH RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+        if (itemStatus === 'FINISH ITEM') {
+          if (data.Avg !== null && data.Avg !== undefined && data.Avg !== '') {
+            pushField("Result_1", data.Avg);
+          } else {
+            pushField("Result_1", data.Cal_1);
+          }
+        } else if (itemStatus === 'FINISH RECHECK') {
+          if (data.Avg !== null && data.Avg !== undefined && data.Avg !== '') {
+            pushField("Result_2", data.Avg);
+          } else {
+            pushField("Result_2", data.Cal_1);
+          }
+        }
+
+        let query3 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query3 + '\n';
+
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query4 = `
+        UPDATE [WWT].[dbo].[COD]
         SET ${fields.join(',\n')}
         WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
         `;
