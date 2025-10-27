@@ -2188,7 +2188,7 @@ router.post('/WWT/getJobDetail', async (req, res) => {
                LEFT JOIN [WWT].[dbo].[Request] R
                  ON I.ID = R.ID
                WHERE I.JobCode = '${req.body.JobCode}' AND (I.Status is null OR I.Status = 'APPROVE')
-               ORDER BY I.JobCode;`;
+               ORDER BY I.ListJobDate, I.AnalysisDue;`;
   // console.log(query);
   let db = await mssql.qurey(query);
   // console.log(db);
