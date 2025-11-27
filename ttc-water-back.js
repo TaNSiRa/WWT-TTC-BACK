@@ -6,8 +6,11 @@ const bodyParser = require('body-parser');
 const port = 14920
 
 
-app.use(bodyParser.urlencoded({ extended: false }))
-app.use(bodyParser.json())
+// app.use(bodyParser.urlencoded({ extended: false }))
+app.use(bodyParser.json({
+  limit: '150mb',
+  extended: true
+}))
 // app.use(bodyParser.json({limit: '150mb'}));
 app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
   limit: '150mb',

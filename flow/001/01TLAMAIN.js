@@ -7,7 +7,6 @@ var httpreq = require('../../function/axios');
 var axios = require('axios');
 const e = require("express");
 
-
 router.get('/TEST', async (req, res) => {
   // console.log(mssql.qurey())
   res.json("TEST");
@@ -1967,6 +1966,9 @@ router.post('/WWT/listNewJob', async (req, res) => {
         pushField("CustName", data.CUSTNAME);
         pushField("SampDate", convertDateToSQLFormat(data.SAMPDATE));
         pushField("BottleCode", data.BOTTLECODE);
+        if (data.INSNAME === 'ICP') {
+          pushField("ItemName", data.ITEMNAME);
+        }
 
         // AllFields.push(`(${fields.join(', ')})`);
 
@@ -2077,6 +2079,9 @@ router.post('/WWT/listInsertJob', async (req, res) => {
         pushField("CustName", data.CUSTNAME);
         pushField("SampDate", convertDateToSQLFormat(data.SAMPDATE));
         pushField("BottleCode", data.BOTTLECODE);
+        if (data.INSNAME === 'ICP') {
+          pushField("ItemName", data.ITEMNAME);
+        }
 
         // AllFields.push(`(${fields.join(', ')})`);
 
@@ -2162,7 +2167,7 @@ router.post('/WWT/SearchJobList', async (req, res) => {
   ORDER BY ReqDate DESC;
   `;
 
-  // console.log(query);
+  console.log(query);
   try {
     let db = await mssql.qurey(query);
     if (db["recordsets"].length > 0) {
@@ -2277,11 +2282,11 @@ router.post('/WWT/jobAvailable', async (req, res) => {
   let query = `SELECT I.*, R.JobStatus
                FROM [WWT].[dbo].[${req.body.Instrument}] I
                LEFT JOIN [WWT].[dbo].[Request] R
-                 ON I.ID = R.ID
+                 ON I.ID = R.ID AND I.JobCode = R.JobCode
                WHERE I.UserListJob = '${req.body.UserListJob}' AND R.JobStatus = 'IN PROCESS'
                ORDER BY I.JobCode;`;
   // let query = `SELECT * From [WWT].[dbo].[${req.body.Instrument}] WHERE UserListJob = '${req.body.UserListJob}' order by JobCode DESC`;
-
+  console.log(query);
   let db = await mssql.qurey(query);
   // console.log(db);
   if (db["recordsets"].length > 0) {
@@ -2394,6 +2399,7 @@ router.post('/WWT/returnRequest', async (req, res) => {
     console.log(dataRow);
     let insName = dataRow.JOBCODE?.split('-').pop();
     let ID = dataRow.ID;
+    let BottleCode = dataRow.BOTTLECODE;
     const baseJobCode = dataRow.JOBCODE;
     let allQueries = '';
     let itemStatusValue = '';
@@ -2409,7 +2415,7 @@ router.post('/WWT/returnRequest', async (req, res) => {
       }
     }
 
-    let querySelect = `SELECT * From [WWT].[dbo].[Request] WHERE ID = '${ID}'`;
+    let querySelect = `SELECT * From [WWT].[dbo].[Request] WHERE  BottleCode = '${BottleCode}'`;
     // console.log(querySelect);
     let db = await mssql.qurey(querySelect);
 
@@ -2449,7 +2455,7 @@ router.post('/WWT/returnRequest', async (req, res) => {
 
         let query = `
         DELETE FROM [WWT].[dbo].[${insName}] 
-        WHERE ID = '${ID}' AND JobCode = '${baseJobCode}';
+        WHERE BottleCode = '${BottleCode}' AND JobCode = '${baseJobCode}';
         `;
 
         // console.log(query);
@@ -2960,6 +2966,455 @@ router.post('/WWT/TempSaveCOD', async (req, res) => {
 
       let query = `
       UPDATE [WWT].[dbo].[COD]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/TempSaveICP', async (req, res) => {
+  console.log("--TempSaveICP--");
+  // const bodyString = JSON.stringify(req.body);
+  // const sizeInBytes = Buffer.byteLength(bodyString, 'utf8');
+  // const sizeInMB = sizeInBytes / (1024 * 1024);
+
+  // console.log(`📦 Body size: ${sizeInMB.toFixed(2)} MB`);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    dataRow = dataRow.filter(item => item.ID && item.ID.trim() !== "");
+    console.log(dataRow);
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("R2_Zn_Result", data.R2_Zn_Result);
+      pushField("R2_Zn_Cal", data.R2_Zn_Cal);
+      pushField("R2_Ni_Result", data.R2_Ni_Result);
+      pushField("R2_Ni_Cal", data.R2_Ni_Cal);
+      pushField("R2_Mn_Result", data.R2_Mn_Result);
+      pushField("R2_Mn_Cal", data.R2_Mn_Cal);
+      pushField("R2_Cr_Result", data.R2_Cr_Result);
+      pushField("R2_Cr_Cal", data.R2_Cr_Cal);
+      pushField("R2_Cu_Result", data.R2_Cu_Result);
+      pushField("R2_Cu_Cal", data.R2_Cu_Cal);
+      pushField("R2_Fe_Result", data.R2_Fe_Result);
+      pushField("R2_Fe_Cal", data.R2_Fe_Cal);
+      pushField("R2_Pb_Result", data.R2_Pb_Result);
+      pushField("R2_Pb_Cal", data.R2_Pb_Cal);
+      pushField("R2_Cd_Result", data.R2_Cd_Result);
+      pushField("R2_Cd_Cal", data.R2_Cd_Cal);
+      pushField("CCV_1_Zn_Result", data.CCV_1_Zn_Result);
+      pushField("CCV_1_Zn_Cal", data.CCV_1_Zn_Cal);
+      pushField("CCV_1_Ni_Result", data.CCV_1_Ni_Result);
+      pushField("CCV_1_Ni_Cal", data.CCV_1_Ni_Cal);
+      pushField("CCV_1_Mn_Result", data.CCV_1_Mn_Result);
+      pushField("CCV_1_Mn_Cal", data.CCV_1_Mn_Cal);
+      pushField("CCV_1_Cr_Result", data.CCV_1_Cr_Result);
+      pushField("CCV_1_Cr_Cal", data.CCV_1_Cr_Cal);
+      pushField("CCV_1_Cu_Result", data.CCV_1_Cu_Result);
+      pushField("CCV_1_Cu_Cal", data.CCV_1_Cu_Cal);
+      pushField("CCV_1_Fe_Result", data.CCV_1_Fe_Result);
+      pushField("CCV_1_Fe_Cal", data.CCV_1_Fe_Cal);
+      pushField("CCV_1_Pb_Result", data.CCV_1_Pb_Result);
+      pushField("CCV_1_Pb_Cal", data.CCV_1_Pb_Cal);
+      pushField("CCV_1_Cd_Result", data.CCV_1_Cd_Result);
+      pushField("CCV_1_Cd_Cal", data.CCV_1_Cd_Cal);
+      pushField("CCV_1_Zn_Recovery", data.CCV_1_Zn_Recovery);
+      pushField("CCV_1_Ni_Recovery", data.CCV_1_Ni_Recovery);
+      pushField("CCV_1_Mn_Recovery", data.CCV_1_Mn_Recovery);
+      pushField("CCV_1_Cr_Recovery", data.CCV_1_Cr_Recovery);
+      pushField("CCV_1_Cu_Recovery", data.CCV_1_Cu_Recovery);
+      pushField("CCV_1_Fe_Recovery", data.CCV_1_Fe_Recovery);
+      pushField("CCV_1_Pb_Recovery", data.CCV_1_Pb_Recovery);
+      pushField("CCV_1_Cd_Recovery", data.CCV_1_Cd_Recovery);
+      pushField("BLK_SampleUse", data.BLK_SampleUse);
+      pushField("BLK_Dilution", data.BLK_Dilution);
+      pushField("BLK_Zn_Result", data.BLK_Zn_Result);
+      pushField("BLK_Zn_Cal", data.BLK_Zn_Cal);
+      pushField("BLK_Ni_Result", data.BLK_Ni_Result);
+      pushField("BLK_Ni_Cal", data.BLK_Ni_Cal);
+      pushField("BLK_Mn_Result", data.BLK_Mn_Result);
+      pushField("BLK_Mn_Cal", data.BLK_Mn_Cal);
+      pushField("BLK_Cr_Result", data.BLK_Cr_Result);
+      pushField("BLK_Cr_Cal", data.BLK_Cr_Cal);
+      pushField("BLK_Cu_Result", data.BLK_Cu_Result);
+      pushField("BLK_Cu_Cal", data.BLK_Cu_Cal);
+      pushField("BLK_Fe_Result", data.BLK_Fe_Result);
+      pushField("BLK_Fe_Cal", data.BLK_Fe_Cal);
+      pushField("BLK_Pb_Result", data.BLK_Pb_Result);
+      pushField("BLK_Pb_Cal", data.BLK_Pb_Cal);
+      pushField("BLK_Cd_Result", data.BLK_Cd_Result);
+      pushField("BLK_Cd_Cal", data.BLK_Cd_Cal);
+      pushField("LFB_SampleUse", data.LFB_SampleUse);
+      pushField("LFB_Dilution", data.LFB_Dilution);
+      pushField("LFB_Zn_Result", data.LFB_Zn_Result);
+      pushField("LFB_Zn_Cal", data.LFB_Zn_Cal);
+      pushField("LFB_Ni_Result", data.LFB_Ni_Result);
+      pushField("LFB_Ni_Cal", data.LFB_Ni_Cal);
+      pushField("LFB_Mn_Result", data.LFB_Mn_Result);
+      pushField("LFB_Mn_Cal", data.LFB_Mn_Cal);
+      pushField("LFB_Cr_Result", data.LFB_Cr_Result);
+      pushField("LFB_Cr_Cal", data.LFB_Cr_Cal);
+      pushField("LFB_Cu_Result", data.LFB_Cu_Result);
+      pushField("LFB_Cu_Cal", data.LFB_Cu_Cal);
+      pushField("LFB_Fe_Result", data.LFB_Fe_Result);
+      pushField("LFB_Fe_Cal", data.LFB_Fe_Cal);
+      pushField("LFB_Pb_Result", data.LFB_Pb_Result);
+      pushField("LFB_Pb_Cal", data.LFB_Pb_Cal);
+      pushField("LFB_Cd_Result", data.LFB_Cd_Result);
+      pushField("LFB_Cd_Cal", data.LFB_Cd_Cal);
+      pushField("LFB_Zn_Recovery", data.LFB_Zn_Recovery);
+      pushField("LFB_Ni_Recovery", data.LFB_Ni_Recovery);
+      pushField("LFB_Mn_Recovery", data.LFB_Mn_Recovery);
+      pushField("LFB_Cr_Recovery", data.LFB_Cr_Recovery);
+      pushField("LFB_Cu_Recovery", data.LFB_Cu_Recovery);
+      pushField("LFB_Fe_Recovery", data.LFB_Fe_Recovery);
+      pushField("LFB_Pb_Recovery", data.LFB_Pb_Recovery);
+      pushField("LFB_Cd_Recovery", data.LFB_Cd_Recovery);
+      pushField("LFM_SampleUse", data.LFM_SampleUse);
+      pushField("LFM_Dilution", data.LFM_Dilution);
+      pushField("LFM_Zn_Result", data.LFM_Zn_Result);
+      pushField("LFM_Zn_Cal", data.LFM_Zn_Cal);
+      pushField("LFM_Ni_Result", data.LFM_Ni_Result);
+      pushField("LFM_Ni_Cal", data.LFM_Ni_Cal);
+      pushField("LFM_Mn_Result", data.LFM_Mn_Result);
+      pushField("LFM_Mn_Cal", data.LFM_Mn_Cal);
+      pushField("LFM_Cr_Result", data.LFM_Cr_Result);
+      pushField("LFM_Cr_Cal", data.LFM_Cr_Cal);
+      pushField("LFM_Cu_Result", data.LFM_Cu_Result);
+      pushField("LFM_Cu_Cal", data.LFM_Cu_Cal);
+      pushField("LFM_Fe_Result", data.LFM_Fe_Result);
+      pushField("LFM_Fe_Cal", data.LFM_Fe_Cal);
+      pushField("LFM_Pb_Result", data.LFM_Pb_Result);
+      pushField("LFM_Pb_Cal", data.LFM_Pb_Cal);
+      pushField("LFM_Cd_Result", data.LFM_Cd_Result);
+      pushField("LFM_Cd_Cal", data.LFM_Cd_Cal);
+      pushField("LFM_Zn_Recovery", data.LFM_Zn_Recovery);
+      pushField("LFM_Ni_Recovery", data.LFM_Ni_Recovery);
+      pushField("LFM_Mn_Recovery", data.LFM_Mn_Recovery);
+      pushField("LFM_Cr_Recovery", data.LFM_Cr_Recovery);
+      pushField("LFM_Cu_Recovery", data.LFM_Cu_Recovery);
+      pushField("LFM_Fe_Recovery", data.LFM_Fe_Recovery);
+      pushField("LFM_Pb_Recovery", data.LFM_Pb_Recovery);
+      pushField("LFM_Cd_Recovery", data.LFM_Cd_Recovery);
+      pushField("LFMD_SampleUse", data.LFMD_SampleUse);
+      pushField("LFMD_Dilution", data.LFMD_Dilution);
+      pushField("LFMD_Zn_Result", data.LFMD_Zn_Result);
+      pushField("LFMD_Zn_Cal", data.LFMD_Zn_Cal);
+      pushField("LFMD_Ni_Result", data.LFMD_Ni_Result);
+      pushField("LFMD_Ni_Cal", data.LFMD_Ni_Cal);
+      pushField("LFMD_Mn_Result", data.LFMD_Mn_Result);
+      pushField("LFMD_Mn_Cal", data.LFMD_Mn_Cal);
+      pushField("LFMD_Cr_Result", data.LFMD_Cr_Result);
+      pushField("LFMD_Cr_Cal", data.LFMD_Cr_Cal);
+      pushField("LFMD_Cu_Result", data.LFMD_Cu_Result);
+      pushField("LFMD_Cu_Cal", data.LFMD_Cu_Cal);
+      pushField("LFMD_Fe_Result", data.LFMD_Fe_Result);
+      pushField("LFMD_Fe_Cal", data.LFMD_Fe_Cal);
+      pushField("LFMD_Pb_Result", data.LFMD_Pb_Result);
+      pushField("LFMD_Pb_Cal", data.LFMD_Pb_Cal);
+      pushField("LFMD_Cd_Result", data.LFMD_Cd_Result);
+      pushField("LFMD_Cd_Cal", data.LFMD_Cd_Cal);
+      pushField("LFMD_Zn_Recovery", data.LFMD_Zn_Recovery);
+      pushField("LFMD_Ni_Recovery", data.LFMD_Ni_Recovery);
+      pushField("LFMD_Mn_Recovery", data.LFMD_Mn_Recovery);
+      pushField("LFMD_Cr_Recovery", data.LFMD_Cr_Recovery);
+      pushField("LFMD_Cu_Recovery", data.LFMD_Cu_Recovery);
+      pushField("LFMD_Fe_Recovery", data.LFMD_Fe_Recovery);
+      pushField("LFMD_Pb_Recovery", data.LFMD_Pb_Recovery);
+      pushField("LFMD_Cd_Recovery", data.LFMD_Cd_Recovery);
+      pushField("LFM_LFMD_Zn_Avg", data.LFM_LFMD_Zn_Avg);
+      pushField("LFM_LFMD_Ni_Avg", data.LFM_LFMD_Ni_Avg);
+      pushField("LFM_LFMD_Mn_Avg", data.LFM_LFMD_Mn_Avg);
+      pushField("LFM_LFMD_Cr_Avg", data.LFM_LFMD_Cr_Avg);
+      pushField("LFM_LFMD_Cu_Avg", data.LFM_LFMD_Cu_Avg);
+      pushField("LFM_LFMD_Fe_Avg", data.LFM_LFMD_Fe_Avg);
+      pushField("LFM_LFMD_Pb_Avg", data.LFM_LFMD_Pb_Avg);
+      pushField("LFM_LFMD_Cd_Avg", data.LFM_LFMD_Cd_Avg);
+      pushField("LFM_LFMD_Zn_RPD", data.LFM_LFMD_Zn_RPD);
+      pushField("LFM_LFMD_Ni_RPD", data.LFM_LFMD_Ni_RPD);
+      pushField("LFM_LFMD_Mn_RPD", data.LFM_LFMD_Mn_RPD);
+      pushField("LFM_LFMD_Cr_RPD", data.LFM_LFMD_Cr_RPD);
+      pushField("LFM_LFMD_Cu_RPD", data.LFM_LFMD_Cu_RPD);
+      pushField("LFM_LFMD_Fe_RPD", data.LFM_LFMD_Fe_RPD);
+      pushField("LFM_LFMD_Pb_RPD", data.LFM_LFMD_Pb_RPD);
+      pushField("LFM_LFMD_Cd_RPD", data.LFM_LFMD_Cd_RPD);
+      pushField("CCV_2_Zn_Result", data.CCV_2_Zn_Result);
+      pushField("CCV_2_Zn_Cal", data.CCV_2_Zn_Cal);
+      pushField("CCV_2_Ni_Result", data.CCV_2_Ni_Result);
+      pushField("CCV_2_Ni_Cal", data.CCV_2_Ni_Cal);
+      pushField("CCV_2_Mn_Result", data.CCV_2_Mn_Result);
+      pushField("CCV_2_Mn_Cal", data.CCV_2_Mn_Cal);
+      pushField("CCV_2_Cr_Result", data.CCV_2_Cr_Result);
+      pushField("CCV_2_Cr_Cal", data.CCV_2_Cr_Cal);
+      pushField("CCV_2_Cu_Result", data.CCV_2_Cu_Result);
+      pushField("CCV_2_Cu_Cal", data.CCV_2_Cu_Cal);
+      pushField("CCV_2_Fe_Result", data.CCV_2_Fe_Result);
+      pushField("CCV_2_Fe_Cal", data.CCV_2_Fe_Cal);
+      pushField("CCV_2_Pb_Result", data.CCV_2_Pb_Result);
+      pushField("CCV_2_Pb_Cal", data.CCV_2_Pb_Cal);
+      pushField("CCV_2_Cd_Result", data.CCV_2_Cd_Result);
+      pushField("CCV_2_Cd_Cal", data.CCV_2_Cd_Cal);
+      pushField("CCV_2_Zn_Recovery", data.CCV_2_Zn_Recovery);
+      pushField("CCV_2_Ni_Recovery", data.CCV_2_Ni_Recovery);
+      pushField("CCV_2_Mn_Recovery", data.CCV_2_Mn_Recovery);
+      pushField("CCV_2_Cr_Recovery", data.CCV_2_Cr_Recovery);
+      pushField("CCV_2_Cu_Recovery", data.CCV_2_Cu_Recovery);
+      pushField("CCV_2_Fe_Recovery", data.CCV_2_Fe_Recovery);
+      pushField("CCV_2_Pb_Recovery", data.CCV_2_Pb_Recovery);
+      pushField("CCV_2_Cd_Recovery", data.CCV_2_Cd_Recovery);
+      pushField("CCV_3_Zn_Result", data.CCV_3_Zn_Result);
+      pushField("CCV_3_Zn_Cal", data.CCV_3_Zn_Cal);
+      pushField("CCV_3_Ni_Result", data.CCV_3_Ni_Result);
+      pushField("CCV_3_Ni_Cal", data.CCV_3_Ni_Cal);
+      pushField("CCV_3_Mn_Result", data.CCV_3_Mn_Result);
+      pushField("CCV_3_Mn_Cal", data.CCV_3_Mn_Cal);
+      pushField("CCV_3_Cr_Result", data.CCV_3_Cr_Result);
+      pushField("CCV_3_Cr_Cal", data.CCV_3_Cr_Cal);
+      pushField("CCV_3_Cu_Result", data.CCV_3_Cu_Result);
+      pushField("CCV_3_Cu_Cal", data.CCV_3_Cu_Cal);
+      pushField("CCV_3_Fe_Result", data.CCV_3_Fe_Result);
+      pushField("CCV_3_Fe_Cal", data.CCV_3_Fe_Cal);
+      pushField("CCV_3_Pb_Result", data.CCV_3_Pb_Result);
+      pushField("CCV_3_Pb_Cal", data.CCV_3_Pb_Cal);
+      pushField("CCV_3_Cd_Result", data.CCV_3_Cd_Result);
+      pushField("CCV_3_Cd_Cal", data.CCV_3_Cd_Cal);
+      pushField("CCV_3_Zn_Recovery", data.CCV_3_Zn_Recovery);
+      pushField("CCV_3_Ni_Recovery", data.CCV_3_Ni_Recovery);
+      pushField("CCV_3_Mn_Recovery", data.CCV_3_Mn_Recovery);
+      pushField("CCV_3_Cr_Recovery", data.CCV_3_Cr_Recovery);
+      pushField("CCV_3_Cu_Recovery", data.CCV_3_Cu_Recovery);
+      pushField("CCV_3_Fe_Recovery", data.CCV_3_Fe_Recovery);
+      pushField("CCV_3_Pb_Recovery", data.CCV_3_Pb_Recovery);
+      pushField("CCV_3_Cd_Recovery", data.CCV_3_Cd_Recovery);
+      pushField("SampleUse_1_1", data.SampleUse_1_1);
+      pushField("Dilution_1_1", data.Dilution_1_1);
+      pushField("Zn_Result_1_1", data.Zn_Result_1_1);
+      pushField("Zn_Cal_1_1", data.Zn_Cal_1_1);
+      pushField("Ni_Result_1_1", data.Ni_Result_1_1);
+      pushField("Ni_Cal_1_1", data.Ni_Cal_1_1);
+      pushField("Mn_Result_1_1", data.Mn_Result_1_1);
+      pushField("Mn_Cal_1_1", data.Mn_Cal_1_1);
+      pushField("Cr_Result_1_1", data.Cr_Result_1_1);
+      pushField("Cr_Cal_1_1", data.Cr_Cal_1_1);
+      pushField("Cu_Result_1_1", data.Cu_Result_1_1);
+      pushField("Cu_Cal_1_1", data.Cu_Cal_1_1);
+      pushField("Fe_Result_1_1", data.Fe_Result_1_1);
+      pushField("Fe_Cal_1_1", data.Fe_Cal_1_1);
+      pushField("Pb_Result_1_1", data.Pb_Result_1_1);
+      pushField("Pb_Cal_1_1", data.Pb_Cal_1_1);
+      pushField("Cd_Result_1_1", data.Cd_Result_1_1);
+      pushField("Cd_Cal_1_1", data.Cd_Cal_1_1);
+      pushField("SampleUse_1_2", data.SampleUse_1_2);
+      pushField("Dilution_1_2", data.Dilution_1_2);
+      pushField("Zn_Result_1_2", data.Zn_Result_1_2);
+      pushField("Zn_Cal_1_2", data.Zn_Cal_1_2);
+      pushField("Ni_Result_1_2", data.Ni_Result_1_2);
+      pushField("Ni_Cal_1_2", data.Ni_Cal_1_2);
+      pushField("Mn_Result_1_2", data.Mn_Result_1_2);
+      pushField("Mn_Cal_1_2", data.Mn_Cal_1_2);
+      pushField("Cr_Result_1_2", data.Cr_Result_1_2);
+      pushField("Cr_Cal_1_2", data.Cr_Cal_1_2);
+      pushField("Cu_Result_1_2", data.Cu_Result_1_2);
+      pushField("Cu_Cal_1_2", data.Cu_Cal_1_2);
+      pushField("Fe_Result_1_2", data.Fe_Result_1_2);
+      pushField("Fe_Cal_1_2", data.Fe_Cal_1_2);
+      pushField("Pb_Result_1_2", data.Pb_Result_1_2);
+      pushField("Pb_Cal_1_2", data.Pb_Cal_1_2);
+      pushField("Cd_Result_1_2", data.Cd_Result_1_2);
+      pushField("Cd_Cal_1_2", data.Cd_Cal_1_2);
+      pushField("SampleUse_1_3", data.SampleUse_1_3);
+      pushField("Dilution_1_3", data.Dilution_1_3);
+      pushField("Zn_Result_1_3", data.Zn_Result_1_3);
+      pushField("Zn_Cal_1_3", data.Zn_Cal_1_3);
+      pushField("Ni_Result_1_3", data.Ni_Result_1_3);
+      pushField("Ni_Cal_1_3", data.Ni_Cal_1_3);
+      pushField("Mn_Result_1_3", data.Mn_Result_1_3);
+      pushField("Mn_Cal_1_3", data.Mn_Cal_1_3);
+      pushField("Cr_Result_1_3", data.Cr_Result_1_3);
+      pushField("Cr_Cal_1_3", data.Cr_Cal_1_3);
+      pushField("Cu_Result_1_3", data.Cu_Result_1_3);
+      pushField("Cu_Cal_1_3", data.Cu_Cal_1_3);
+      pushField("Fe_Result_1_3", data.Fe_Result_1_3);
+      pushField("Fe_Cal_1_3", data.Fe_Cal_1_3);
+      pushField("Pb_Result_1_3", data.Pb_Result_1_3);
+      pushField("Pb_Cal_1_3", data.Pb_Cal_1_3);
+      pushField("Cd_Result_1_3", data.Cd_Result_1_3);
+      pushField("Cd_Cal_1_3", data.Cd_Cal_1_3);
+      pushField("SampleUse_1_4", data.SampleUse_1_4);
+      pushField("Dilution_1_4", data.Dilution_1_4);
+      pushField("Zn_Result_1_4", data.Zn_Result_1_4);
+      pushField("Zn_Cal_1_4", data.Zn_Cal_1_4);
+      pushField("Ni_Result_1_4", data.Ni_Result_1_4);
+      pushField("Ni_Cal_1_4", data.Ni_Cal_1_4);
+      pushField("Mn_Result_1_4", data.Mn_Result_1_4);
+      pushField("Mn_Cal_1_4", data.Mn_Cal_1_4);
+      pushField("Cr_Result_1_4", data.Cr_Result_1_4);
+      pushField("Cr_Cal_1_4", data.Cr_Cal_1_4);
+      pushField("Cu_Result_1_4", data.Cu_Result_1_4);
+      pushField("Cu_Cal_1_4", data.Cu_Cal_1_4);
+      pushField("Fe_Result_1_4", data.Fe_Result_1_4);
+      pushField("Fe_Cal_1_4", data.Fe_Cal_1_4);
+      pushField("Pb_Result_1_4", data.Pb_Result_1_4);
+      pushField("Pb_Cal_1_4", data.Pb_Cal_1_4);
+      pushField("Cd_Result_1_4", data.Cd_Result_1_4);
+      pushField("Cd_Cal_1_4", data.Cd_Cal_1_4);
+      pushField("SampleUse_1_5", data.SampleUse_1_5);
+      pushField("Dilution_1_5", data.Dilution_1_5);
+      pushField("Zn_Result_1_5", data.Zn_Result_1_5);
+      pushField("Zn_Cal_1_5", data.Zn_Cal_1_5);
+      pushField("Ni_Result_1_5", data.Ni_Result_1_5);
+      pushField("Ni_Cal_1_5", data.Ni_Cal_1_5);
+      pushField("Mn_Result_1_5", data.Mn_Result_1_5);
+      pushField("Mn_Cal_1_5", data.Mn_Cal_1_5);
+      pushField("Cr_Result_1_5", data.Cr_Result_1_5);
+      pushField("Cr_Cal_1_5", data.Cr_Cal_1_5);
+      pushField("Cu_Result_1_5", data.Cu_Result_1_5);
+      pushField("Cu_Cal_1_5", data.Cu_Cal_1_5);
+      pushField("Fe_Result_1_5", data.Fe_Result_1_5);
+      pushField("Fe_Cal_1_5", data.Fe_Cal_1_5);
+      pushField("Pb_Result_1_5", data.Pb_Result_1_5);
+      pushField("Pb_Cal_1_5", data.Pb_Cal_1_5);
+      pushField("Cd_Result_1_5", data.Cd_Result_1_5);
+      pushField("Cd_Cal_1_5", data.Cd_Cal_1_5);
+      pushField("SampleUse_2_1", data.SampleUse_2_1);
+      pushField("Dilution_2_1", data.Dilution_2_1);
+      pushField("Zn_Result_2_1", data.Zn_Result_2_1);
+      pushField("Zn_Cal_2_1", data.Zn_Cal_2_1);
+      pushField("Ni_Result_2_1", data.Ni_Result_2_1);
+      pushField("Ni_Cal_2_1", data.Ni_Cal_2_1);
+      pushField("Mn_Result_2_1", data.Mn_Result_2_1);
+      pushField("Mn_Cal_2_1", data.Mn_Cal_2_1);
+      pushField("Cr_Result_2_1", data.Cr_Result_2_1);
+      pushField("Cr_Cal_2_1", data.Cr_Cal_2_1);
+      pushField("Cu_Result_2_1", data.Cu_Result_2_1);
+      pushField("Cu_Cal_2_1", data.Cu_Cal_2_1);
+      pushField("Fe_Result_2_1", data.Fe_Result_2_1);
+      pushField("Fe_Cal_2_1", data.Fe_Cal_2_1);
+      pushField("Pb_Result_2_1", data.Pb_Result_2_1);
+      pushField("Pb_Cal_2_1", data.Pb_Cal_2_1);
+      pushField("Cd_Result_2_1", data.Cd_Result_2_1);
+      pushField("Cd_Cal_2_1", data.Cd_Cal_2_1);
+      pushField("SampleUse_2_2", data.SampleUse_2_2);
+      pushField("Dilution_2_2", data.Dilution_2_2);
+      pushField("Zn_Result_2_2", data.Zn_Result_2_2);
+      pushField("Zn_Cal_2_2", data.Zn_Cal_2_2);
+      pushField("Ni_Result_2_2", data.Ni_Result_2_2);
+      pushField("Ni_Cal_2_2", data.Ni_Cal_2_2);
+      pushField("Mn_Result_2_2", data.Mn_Result_2_2);
+      pushField("Mn_Cal_2_2", data.Mn_Cal_2_2);
+      pushField("Cr_Result_2_2", data.Cr_Result_2_2);
+      pushField("Cr_Cal_2_2", data.Cr_Cal_2_2);
+      pushField("Cu_Result_2_2", data.Cu_Result_2_2);
+      pushField("Cu_Cal_2_2", data.Cu_Cal_2_2);
+      pushField("Fe_Result_2_2", data.Fe_Result_2_2);
+      pushField("Fe_Cal_2_2", data.Fe_Cal_2_2);
+      pushField("Pb_Result_2_2", data.Pb_Result_2_2);
+      pushField("Pb_Cal_2_2", data.Pb_Cal_2_2);
+      pushField("Cd_Result_2_2", data.Cd_Result_2_2);
+      pushField("Cd_Cal_2_2", data.Cd_Cal_2_2);
+      pushField("SampleUse_2_3", data.SampleUse_2_3);
+      pushField("Dilution_2_3", data.Dilution_2_3);
+      pushField("Zn_Result_2_3", data.Zn_Result_2_3);
+      pushField("Zn_Cal_2_3", data.Zn_Cal_2_3);
+      pushField("Ni_Result_2_3", data.Ni_Result_2_3);
+      pushField("Ni_Cal_2_3", data.Ni_Cal_2_3);
+      pushField("Mn_Result_2_3", data.Mn_Result_2_3);
+      pushField("Mn_Cal_2_3", data.Mn_Cal_2_3);
+      pushField("Cr_Result_2_3", data.Cr_Result_2_3);
+      pushField("Cr_Cal_2_3", data.Cr_Cal_2_3);
+      pushField("Cu_Result_2_3", data.Cu_Result_2_3);
+      pushField("Cu_Cal_2_3", data.Cu_Cal_2_3);
+      pushField("Fe_Result_2_3", data.Fe_Result_2_3);
+      pushField("Fe_Cal_2_3", data.Fe_Cal_2_3);
+      pushField("Pb_Result_2_3", data.Pb_Result_2_3);
+      pushField("Pb_Cal_2_3", data.Pb_Cal_2_3);
+      pushField("Cd_Result_2_3", data.Cd_Result_2_3);
+      pushField("Cd_Cal_2_3", data.Cd_Cal_2_3);
+      pushField("SampleUse_2_4", data.SampleUse_2_4);
+      pushField("Dilution_2_4", data.Dilution_2_4);
+      pushField("Zn_Result_2_4", data.Zn_Result_2_4);
+      pushField("Zn_Cal_2_4", data.Zn_Cal_2_4);
+      pushField("Ni_Result_2_4", data.Ni_Result_2_4);
+      pushField("Ni_Cal_2_4", data.Ni_Cal_2_4);
+      pushField("Mn_Result_2_4", data.Mn_Result_2_4);
+      pushField("Mn_Cal_2_4", data.Mn_Cal_2_4);
+      pushField("Cr_Result_2_4", data.Cr_Result_2_4);
+      pushField("Cr_Cal_2_4", data.Cr_Cal_2_4);
+      pushField("Cu_Result_2_4", data.Cu_Result_2_4);
+      pushField("Cu_Cal_2_4", data.Cu_Cal_2_4);
+      pushField("Fe_Result_2_4", data.Fe_Result_2_4);
+      pushField("Fe_Cal_2_4", data.Fe_Cal_2_4);
+      pushField("Pb_Result_2_4", data.Pb_Result_2_4);
+      pushField("Pb_Cal_2_4", data.Pb_Cal_2_4);
+      pushField("Cd_Result_2_4", data.Cd_Result_2_4);
+      pushField("Cd_Cal_2_4", data.Cd_Cal_2_4);
+      pushField("SampleUse_2_5", data.SampleUse_2_5);
+      pushField("Dilution_2_5", data.Dilution_2_5);
+      pushField("Zn_Result_2_5", data.Zn_Result_2_5);
+      pushField("Zn_Cal_2_5", data.Zn_Cal_2_5);
+      pushField("Ni_Result_2_5", data.Ni_Result_2_5);
+      pushField("Ni_Cal_2_5", data.Ni_Cal_2_5);
+      pushField("Mn_Result_2_5", data.Mn_Result_2_5);
+      pushField("Mn_Cal_2_5", data.Mn_Cal_2_5);
+      pushField("Cr_Result_2_5", data.Cr_Result_2_5);
+      pushField("Cr_Cal_2_5", data.Cr_Cal_2_5);
+      pushField("Cu_Result_2_5", data.Cu_Result_2_5);
+      pushField("Cu_Cal_2_5", data.Cu_Cal_2_5);
+      pushField("Fe_Result_2_5", data.Fe_Result_2_5);
+      pushField("Fe_Cal_2_5", data.Fe_Cal_2_5);
+      pushField("Pb_Result_2_5", data.Pb_Result_2_5);
+      pushField("Pb_Cal_2_5", data.Pb_Cal_2_5);
+      pushField("Cd_Result_2_5", data.Cd_Result_2_5);
+      pushField("Cd_Cal_2_5", data.Cd_Cal_2_5);
+      pushField("Zn_Avg", data.Zn_Avg);
+      pushField("Zn_RPD", data.Zn_RPD);
+      pushField("Ni_Avg", data.Ni_Avg);
+      pushField("Ni_RPD", data.Ni_RPD);
+      pushField("Mn_Avg", data.Mn_Avg);
+      pushField("Mn_RPD", data.Mn_RPD);
+      pushField("Cr_Avg", data.Cr_Avg);
+      pushField("Cr_RPD", data.Cr_RPD);
+      pushField("Cu_Avg", data.Cu_Avg);
+      pushField("Cu_RPD", data.Cu_RPD);
+      pushField("Fe_Avg", data.Fe_Avg);
+      pushField("Fe_RPD", data.Fe_RPD);
+      pushField("Pb_Avg", data.Pb_Avg);
+      pushField("Pb_RPD", data.Pb_RPD);
+      pushField("Cd_Avg", data.Cd_Avg);
+      pushField("Cd_RPD", data.Cd_RPD);
+      pushField("Select_L", data.Select_L);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[ICP]
       SET ${fields.join(',\n')}
       WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
       `;
@@ -3679,6 +4134,494 @@ router.post('/WWT/SaveCOD', async (req, res) => {
 
       let query = `
       UPDATE [WWT].[dbo].[COD]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    if (db["rowsAffected"][0] > 0) {
+      let updateQuery = '';
+      let itemStatusValue = '';
+
+      for (const data of dataRow) {
+        let fields = [];
+        function pushField(name, value) {
+          if (value !== '') {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = '${escapedValue}'`);
+          } else {
+            fields.push(`[${name}] = NULL`);
+          }
+        }
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'FINISH ITEM';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'FINISH RECHECK';
+        } else {
+          itemStatusValue = 'FINISH ITEM';
+        }
+        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("AnalysisDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", 'FINISH');
+
+        let query = `
+          UPDATE [WWT].[dbo].[Request]
+          SET ${fields.join(',\n')}
+          WHERE ID = '${data.ID}';
+          `;
+        updateQuery += query + '\n';
+      }
+      // console.log(updateQuery);
+      let updateRequest = await mssql.qurey(updateQuery);
+      if (updateRequest["rowsAffected"][0] > 0) {
+        console.log("Update Success");
+        return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      } else {
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+      }
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/SaveICP', async (req, res) => {
+  console.log("--SaveICP--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("R2_Zn_Result", data.R2_Zn_Result);
+      pushField("R2_Zn_Cal", data.R2_Zn_Cal);
+      pushField("R2_Ni_Result", data.R2_Ni_Result);
+      pushField("R2_Ni_Cal", data.R2_Ni_Cal);
+      pushField("R2_Mn_Result", data.R2_Mn_Result);
+      pushField("R2_Mn_Cal", data.R2_Mn_Cal);
+      pushField("R2_Cr_Result", data.R2_Cr_Result);
+      pushField("R2_Cr_Cal", data.R2_Cr_Cal);
+      pushField("R2_Cu_Result", data.R2_Cu_Result);
+      pushField("R2_Cu_Cal", data.R2_Cu_Cal);
+      pushField("R2_Fe_Result", data.R2_Fe_Result);
+      pushField("R2_Fe_Cal", data.R2_Fe_Cal);
+      pushField("R2_Pb_Result", data.R2_Pb_Result);
+      pushField("R2_Pb_Cal", data.R2_Pb_Cal);
+      pushField("R2_Cd_Result", data.R2_Cd_Result);
+      pushField("R2_Cd_Cal", data.R2_Cd_Cal);
+      pushField("CCV_1_Zn_Result", data.CCV_1_Zn_Result);
+      pushField("CCV_1_Zn_Cal", data.CCV_1_Zn_Cal);
+      pushField("CCV_1_Ni_Result", data.CCV_1_Ni_Result);
+      pushField("CCV_1_Ni_Cal", data.CCV_1_Ni_Cal);
+      pushField("CCV_1_Mn_Result", data.CCV_1_Mn_Result);
+      pushField("CCV_1_Mn_Cal", data.CCV_1_Mn_Cal);
+      pushField("CCV_1_Cr_Result", data.CCV_1_Cr_Result);
+      pushField("CCV_1_Cr_Cal", data.CCV_1_Cr_Cal);
+      pushField("CCV_1_Cu_Result", data.CCV_1_Cu_Result);
+      pushField("CCV_1_Cu_Cal", data.CCV_1_Cu_Cal);
+      pushField("CCV_1_Fe_Result", data.CCV_1_Fe_Result);
+      pushField("CCV_1_Fe_Cal", data.CCV_1_Fe_Cal);
+      pushField("CCV_1_Pb_Result", data.CCV_1_Pb_Result);
+      pushField("CCV_1_Pb_Cal", data.CCV_1_Pb_Cal);
+      pushField("CCV_1_Cd_Result", data.CCV_1_Cd_Result);
+      pushField("CCV_1_Cd_Cal", data.CCV_1_Cd_Cal);
+      pushField("CCV_1_Zn_Recovery", data.CCV_1_Zn_Recovery);
+      pushField("CCV_1_Ni_Recovery", data.CCV_1_Ni_Recovery);
+      pushField("CCV_1_Mn_Recovery", data.CCV_1_Mn_Recovery);
+      pushField("CCV_1_Cr_Recovery", data.CCV_1_Cr_Recovery);
+      pushField("CCV_1_Cu_Recovery", data.CCV_1_Cu_Recovery);
+      pushField("CCV_1_Fe_Recovery", data.CCV_1_Fe_Recovery);
+      pushField("CCV_1_Pb_Recovery", data.CCV_1_Pb_Recovery);
+      pushField("CCV_1_Cd_Recovery", data.CCV_1_Cd_Recovery);
+      pushField("BLK_SampleUse", data.BLK_SampleUse);
+      pushField("BLK_Dilution", data.BLK_Dilution);
+      pushField("BLK_Zn_Result", data.BLK_Zn_Result);
+      pushField("BLK_Zn_Cal", data.BLK_Zn_Cal);
+      pushField("BLK_Ni_Result", data.BLK_Ni_Result);
+      pushField("BLK_Ni_Cal", data.BLK_Ni_Cal);
+      pushField("BLK_Mn_Result", data.BLK_Mn_Result);
+      pushField("BLK_Mn_Cal", data.BLK_Mn_Cal);
+      pushField("BLK_Cr_Result", data.BLK_Cr_Result);
+      pushField("BLK_Cr_Cal", data.BLK_Cr_Cal);
+      pushField("BLK_Cu_Result", data.BLK_Cu_Result);
+      pushField("BLK_Cu_Cal", data.BLK_Cu_Cal);
+      pushField("BLK_Fe_Result", data.BLK_Fe_Result);
+      pushField("BLK_Fe_Cal", data.BLK_Fe_Cal);
+      pushField("BLK_Pb_Result", data.BLK_Pb_Result);
+      pushField("BLK_Pb_Cal", data.BLK_Pb_Cal);
+      pushField("BLK_Cd_Result", data.BLK_Cd_Result);
+      pushField("BLK_Cd_Cal", data.BLK_Cd_Cal);
+      pushField("LFB_SampleUse", data.LFB_SampleUse);
+      pushField("LFB_Dilution", data.LFB_Dilution);
+      pushField("LFB_Zn_Result", data.LFB_Zn_Result);
+      pushField("LFB_Zn_Cal", data.LFB_Zn_Cal);
+      pushField("LFB_Ni_Result", data.LFB_Ni_Result);
+      pushField("LFB_Ni_Cal", data.LFB_Ni_Cal);
+      pushField("LFB_Mn_Result", data.LFB_Mn_Result);
+      pushField("LFB_Mn_Cal", data.LFB_Mn_Cal);
+      pushField("LFB_Cr_Result", data.LFB_Cr_Result);
+      pushField("LFB_Cr_Cal", data.LFB_Cr_Cal);
+      pushField("LFB_Cu_Result", data.LFB_Cu_Result);
+      pushField("LFB_Cu_Cal", data.LFB_Cu_Cal);
+      pushField("LFB_Fe_Result", data.LFB_Fe_Result);
+      pushField("LFB_Fe_Cal", data.LFB_Fe_Cal);
+      pushField("LFB_Pb_Result", data.LFB_Pb_Result);
+      pushField("LFB_Pb_Cal", data.LFB_Pb_Cal);
+      pushField("LFB_Cd_Result", data.LFB_Cd_Result);
+      pushField("LFB_Cd_Cal", data.LFB_Cd_Cal);
+      pushField("LFB_Zn_Recovery", data.LFB_Zn_Recovery);
+      pushField("LFB_Ni_Recovery", data.LFB_Ni_Recovery);
+      pushField("LFB_Mn_Recovery", data.LFB_Mn_Recovery);
+      pushField("LFB_Cr_Recovery", data.LFB_Cr_Recovery);
+      pushField("LFB_Cu_Recovery", data.LFB_Cu_Recovery);
+      pushField("LFB_Fe_Recovery", data.LFB_Fe_Recovery);
+      pushField("LFB_Pb_Recovery", data.LFB_Pb_Recovery);
+      pushField("LFB_Cd_Recovery", data.LFB_Cd_Recovery);
+      pushField("LFM_SampleUse", data.LFM_SampleUse);
+      pushField("LFM_Dilution", data.LFM_Dilution);
+      pushField("LFM_Zn_Result", data.LFM_Zn_Result);
+      pushField("LFM_Zn_Cal", data.LFM_Zn_Cal);
+      pushField("LFM_Ni_Result", data.LFM_Ni_Result);
+      pushField("LFM_Ni_Cal", data.LFM_Ni_Cal);
+      pushField("LFM_Mn_Result", data.LFM_Mn_Result);
+      pushField("LFM_Mn_Cal", data.LFM_Mn_Cal);
+      pushField("LFM_Cr_Result", data.LFM_Cr_Result);
+      pushField("LFM_Cr_Cal", data.LFM_Cr_Cal);
+      pushField("LFM_Cu_Result", data.LFM_Cu_Result);
+      pushField("LFM_Cu_Cal", data.LFM_Cu_Cal);
+      pushField("LFM_Fe_Result", data.LFM_Fe_Result);
+      pushField("LFM_Fe_Cal", data.LFM_Fe_Cal);
+      pushField("LFM_Pb_Result", data.LFM_Pb_Result);
+      pushField("LFM_Pb_Cal", data.LFM_Pb_Cal);
+      pushField("LFM_Cd_Result", data.LFM_Cd_Result);
+      pushField("LFM_Cd_Cal", data.LFM_Cd_Cal);
+      pushField("LFM_Zn_Recovery", data.LFM_Zn_Recovery);
+      pushField("LFM_Ni_Recovery", data.LFM_Ni_Recovery);
+      pushField("LFM_Mn_Recovery", data.LFM_Mn_Recovery);
+      pushField("LFM_Cr_Recovery", data.LFM_Cr_Recovery);
+      pushField("LFM_Cu_Recovery", data.LFM_Cu_Recovery);
+      pushField("LFM_Fe_Recovery", data.LFM_Fe_Recovery);
+      pushField("LFM_Pb_Recovery", data.LFM_Pb_Recovery);
+      pushField("LFM_Cd_Recovery", data.LFM_Cd_Recovery);
+      pushField("LFMD_SampleUse", data.LFMD_SampleUse);
+      pushField("LFMD_Dilution", data.LFMD_Dilution);
+      pushField("LFMD_Zn_Result", data.LFMD_Zn_Result);
+      pushField("LFMD_Zn_Cal", data.LFMD_Zn_Cal);
+      pushField("LFMD_Ni_Result", data.LFMD_Ni_Result);
+      pushField("LFMD_Ni_Cal", data.LFMD_Ni_Cal);
+      pushField("LFMD_Mn_Result", data.LFMD_Mn_Result);
+      pushField("LFMD_Mn_Cal", data.LFMD_Mn_Cal);
+      pushField("LFMD_Cr_Result", data.LFMD_Cr_Result);
+      pushField("LFMD_Cr_Cal", data.LFMD_Cr_Cal);
+      pushField("LFMD_Cu_Result", data.LFMD_Cu_Result);
+      pushField("LFMD_Cu_Cal", data.LFMD_Cu_Cal);
+      pushField("LFMD_Fe_Result", data.LFMD_Fe_Result);
+      pushField("LFMD_Fe_Cal", data.LFMD_Fe_Cal);
+      pushField("LFMD_Pb_Result", data.LFMD_Pb_Result);
+      pushField("LFMD_Pb_Cal", data.LFMD_Pb_Cal);
+      pushField("LFMD_Cd_Result", data.LFMD_Cd_Result);
+      pushField("LFMD_Cd_Cal", data.LFMD_Cd_Cal);
+      pushField("LFMD_Zn_Recovery", data.LFMD_Zn_Recovery);
+      pushField("LFMD_Ni_Recovery", data.LFMD_Ni_Recovery);
+      pushField("LFMD_Mn_Recovery", data.LFMD_Mn_Recovery);
+      pushField("LFMD_Cr_Recovery", data.LFMD_Cr_Recovery);
+      pushField("LFMD_Cu_Recovery", data.LFMD_Cu_Recovery);
+      pushField("LFMD_Fe_Recovery", data.LFMD_Fe_Recovery);
+      pushField("LFMD_Pb_Recovery", data.LFMD_Pb_Recovery);
+      pushField("LFMD_Cd_Recovery", data.LFMD_Cd_Recovery);
+      pushField("LFM_LFMD_Zn_Avg", data.LFM_LFMD_Zn_Avg);
+      pushField("LFM_LFMD_Ni_Avg", data.LFM_LFMD_Ni_Avg);
+      pushField("LFM_LFMD_Mn_Avg", data.LFM_LFMD_Mn_Avg);
+      pushField("LFM_LFMD_Cr_Avg", data.LFM_LFMD_Cr_Avg);
+      pushField("LFM_LFMD_Cu_Avg", data.LFM_LFMD_Cu_Avg);
+      pushField("LFM_LFMD_Fe_Avg", data.LFM_LFMD_Fe_Avg);
+      pushField("LFM_LFMD_Pb_Avg", data.LFM_LFMD_Pb_Avg);
+      pushField("LFM_LFMD_Cd_Avg", data.LFM_LFMD_Cd_Avg);
+      pushField("LFM_LFMD_Zn_RPD", data.LFM_LFMD_Zn_RPD);
+      pushField("LFM_LFMD_Ni_RPD", data.LFM_LFMD_Ni_RPD);
+      pushField("LFM_LFMD_Mn_RPD", data.LFM_LFMD_Mn_RPD);
+      pushField("LFM_LFMD_Cr_RPD", data.LFM_LFMD_Cr_RPD);
+      pushField("LFM_LFMD_Cu_RPD", data.LFM_LFMD_Cu_RPD);
+      pushField("LFM_LFMD_Fe_RPD", data.LFM_LFMD_Fe_RPD);
+      pushField("LFM_LFMD_Pb_RPD", data.LFM_LFMD_Pb_RPD);
+      pushField("LFM_LFMD_Cd_RPD", data.LFM_LFMD_Cd_RPD);
+      pushField("CCV_2_Zn_Result", data.CCV_2_Zn_Result);
+      pushField("CCV_2_Zn_Cal", data.CCV_2_Zn_Cal);
+      pushField("CCV_2_Ni_Result", data.CCV_2_Ni_Result);
+      pushField("CCV_2_Ni_Cal", data.CCV_2_Ni_Cal);
+      pushField("CCV_2_Mn_Result", data.CCV_2_Mn_Result);
+      pushField("CCV_2_Mn_Cal", data.CCV_2_Mn_Cal);
+      pushField("CCV_2_Cr_Result", data.CCV_2_Cr_Result);
+      pushField("CCV_2_Cr_Cal", data.CCV_2_Cr_Cal);
+      pushField("CCV_2_Cu_Result", data.CCV_2_Cu_Result);
+      pushField("CCV_2_Cu_Cal", data.CCV_2_Cu_Cal);
+      pushField("CCV_2_Fe_Result", data.CCV_2_Fe_Result);
+      pushField("CCV_2_Fe_Cal", data.CCV_2_Fe_Cal);
+      pushField("CCV_2_Pb_Result", data.CCV_2_Pb_Result);
+      pushField("CCV_2_Pb_Cal", data.CCV_2_Pb_Cal);
+      pushField("CCV_2_Cd_Result", data.CCV_2_Cd_Result);
+      pushField("CCV_2_Cd_Cal", data.CCV_2_Cd_Cal);
+      pushField("CCV_2_Zn_Recovery", data.CCV_2_Zn_Recovery);
+      pushField("CCV_2_Ni_Recovery", data.CCV_2_Ni_Recovery);
+      pushField("CCV_2_Mn_Recovery", data.CCV_2_Mn_Recovery);
+      pushField("CCV_2_Cr_Recovery", data.CCV_2_Cr_Recovery);
+      pushField("CCV_2_Cu_Recovery", data.CCV_2_Cu_Recovery);
+      pushField("CCV_2_Fe_Recovery", data.CCV_2_Fe_Recovery);
+      pushField("CCV_2_Pb_Recovery", data.CCV_2_Pb_Recovery);
+      pushField("CCV_2_Cd_Recovery", data.CCV_2_Cd_Recovery);
+      pushField("CCV_3_Zn_Result", data.CCV_3_Zn_Result);
+      pushField("CCV_3_Zn_Cal", data.CCV_3_Zn_Cal);
+      pushField("CCV_3_Ni_Result", data.CCV_3_Ni_Result);
+      pushField("CCV_3_Ni_Cal", data.CCV_3_Ni_Cal);
+      pushField("CCV_3_Mn_Result", data.CCV_3_Mn_Result);
+      pushField("CCV_3_Mn_Cal", data.CCV_3_Mn_Cal);
+      pushField("CCV_3_Cr_Result", data.CCV_3_Cr_Result);
+      pushField("CCV_3_Cr_Cal", data.CCV_3_Cr_Cal);
+      pushField("CCV_3_Cu_Result", data.CCV_3_Cu_Result);
+      pushField("CCV_3_Cu_Cal", data.CCV_3_Cu_Cal);
+      pushField("CCV_3_Fe_Result", data.CCV_3_Fe_Result);
+      pushField("CCV_3_Fe_Cal", data.CCV_3_Fe_Cal);
+      pushField("CCV_3_Pb_Result", data.CCV_3_Pb_Result);
+      pushField("CCV_3_Pb_Cal", data.CCV_3_Pb_Cal);
+      pushField("CCV_3_Cd_Result", data.CCV_3_Cd_Result);
+      pushField("CCV_3_Cd_Cal", data.CCV_3_Cd_Cal);
+      pushField("CCV_3_Zn_Recovery", data.CCV_3_Zn_Recovery);
+      pushField("CCV_3_Ni_Recovery", data.CCV_3_Ni_Recovery);
+      pushField("CCV_3_Mn_Recovery", data.CCV_3_Mn_Recovery);
+      pushField("CCV_3_Cr_Recovery", data.CCV_3_Cr_Recovery);
+      pushField("CCV_3_Cu_Recovery", data.CCV_3_Cu_Recovery);
+      pushField("CCV_3_Fe_Recovery", data.CCV_3_Fe_Recovery);
+      pushField("CCV_3_Pb_Recovery", data.CCV_3_Pb_Recovery);
+      pushField("CCV_3_Cd_Recovery", data.CCV_3_Cd_Recovery);
+      pushField("SampleUse_1_1", data.SampleUse_1_1);
+      pushField("Dilution_1_1", data.Dilution_1_1);
+      pushField("Zn_Result_1_1", data.Zn_Result_1_1);
+      pushField("Zn_Cal_1_1", data.Zn_Cal_1_1);
+      pushField("Ni_Result_1_1", data.Ni_Result_1_1);
+      pushField("Ni_Cal_1_1", data.Ni_Cal_1_1);
+      pushField("Mn_Result_1_1", data.Mn_Result_1_1);
+      pushField("Mn_Cal_1_1", data.Mn_Cal_1_1);
+      pushField("Cr_Result_1_1", data.Cr_Result_1_1);
+      pushField("Cr_Cal_1_1", data.Cr_Cal_1_1);
+      pushField("Cu_Result_1_1", data.Cu_Result_1_1);
+      pushField("Cu_Cal_1_1", data.Cu_Cal_1_1);
+      pushField("Fe_Result_1_1", data.Fe_Result_1_1);
+      pushField("Fe_Cal_1_1", data.Fe_Cal_1_1);
+      pushField("Pb_Result_1_1", data.Pb_Result_1_1);
+      pushField("Pb_Cal_1_1", data.Pb_Cal_1_1);
+      pushField("Cd_Result_1_1", data.Cd_Result_1_1);
+      pushField("Cd_Cal_1_1", data.Cd_Cal_1_1);
+      pushField("SampleUse_1_2", data.SampleUse_1_2);
+      pushField("Dilution_1_2", data.Dilution_1_2);
+      pushField("Zn_Result_1_2", data.Zn_Result_1_2);
+      pushField("Zn_Cal_1_2", data.Zn_Cal_1_2);
+      pushField("Ni_Result_1_2", data.Ni_Result_1_2);
+      pushField("Ni_Cal_1_2", data.Ni_Cal_1_2);
+      pushField("Mn_Result_1_2", data.Mn_Result_1_2);
+      pushField("Mn_Cal_1_2", data.Mn_Cal_1_2);
+      pushField("Cr_Result_1_2", data.Cr_Result_1_2);
+      pushField("Cr_Cal_1_2", data.Cr_Cal_1_2);
+      pushField("Cu_Result_1_2", data.Cu_Result_1_2);
+      pushField("Cu_Cal_1_2", data.Cu_Cal_1_2);
+      pushField("Fe_Result_1_2", data.Fe_Result_1_2);
+      pushField("Fe_Cal_1_2", data.Fe_Cal_1_2);
+      pushField("Pb_Result_1_2", data.Pb_Result_1_2);
+      pushField("Pb_Cal_1_2", data.Pb_Cal_1_2);
+      pushField("Cd_Result_1_2", data.Cd_Result_1_2);
+      pushField("Cd_Cal_1_2", data.Cd_Cal_1_2);
+      pushField("SampleUse_1_3", data.SampleUse_1_3);
+      pushField("Dilution_1_3", data.Dilution_1_3);
+      pushField("Zn_Result_1_3", data.Zn_Result_1_3);
+      pushField("Zn_Cal_1_3", data.Zn_Cal_1_3);
+      pushField("Ni_Result_1_3", data.Ni_Result_1_3);
+      pushField("Ni_Cal_1_3", data.Ni_Cal_1_3);
+      pushField("Mn_Result_1_3", data.Mn_Result_1_3);
+      pushField("Mn_Cal_1_3", data.Mn_Cal_1_3);
+      pushField("Cr_Result_1_3", data.Cr_Result_1_3);
+      pushField("Cr_Cal_1_3", data.Cr_Cal_1_3);
+      pushField("Cu_Result_1_3", data.Cu_Result_1_3);
+      pushField("Cu_Cal_1_3", data.Cu_Cal_1_3);
+      pushField("Fe_Result_1_3", data.Fe_Result_1_3);
+      pushField("Fe_Cal_1_3", data.Fe_Cal_1_3);
+      pushField("Pb_Result_1_3", data.Pb_Result_1_3);
+      pushField("Pb_Cal_1_3", data.Pb_Cal_1_3);
+      pushField("Cd_Result_1_3", data.Cd_Result_1_3);
+      pushField("Cd_Cal_1_3", data.Cd_Cal_1_3);
+      pushField("SampleUse_1_4", data.SampleUse_1_4);
+      pushField("Dilution_1_4", data.Dilution_1_4);
+      pushField("Zn_Result_1_4", data.Zn_Result_1_4);
+      pushField("Zn_Cal_1_4", data.Zn_Cal_1_4);
+      pushField("Ni_Result_1_4", data.Ni_Result_1_4);
+      pushField("Ni_Cal_1_4", data.Ni_Cal_1_4);
+      pushField("Mn_Result_1_4", data.Mn_Result_1_4);
+      pushField("Mn_Cal_1_4", data.Mn_Cal_1_4);
+      pushField("Cr_Result_1_4", data.Cr_Result_1_4);
+      pushField("Cr_Cal_1_4", data.Cr_Cal_1_4);
+      pushField("Cu_Result_1_4", data.Cu_Result_1_4);
+      pushField("Cu_Cal_1_4", data.Cu_Cal_1_4);
+      pushField("Fe_Result_1_4", data.Fe_Result_1_4);
+      pushField("Fe_Cal_1_4", data.Fe_Cal_1_4);
+      pushField("Pb_Result_1_4", data.Pb_Result_1_4);
+      pushField("Pb_Cal_1_4", data.Pb_Cal_1_4);
+      pushField("Cd_Result_1_4", data.Cd_Result_1_4);
+      pushField("Cd_Cal_1_4", data.Cd_Cal_1_4);
+      pushField("SampleUse_1_5", data.SampleUse_1_5);
+      pushField("Dilution_1_5", data.Dilution_1_5);
+      pushField("Zn_Result_1_5", data.Zn_Result_1_5);
+      pushField("Zn_Cal_1_5", data.Zn_Cal_1_5);
+      pushField("Ni_Result_1_5", data.Ni_Result_1_5);
+      pushField("Ni_Cal_1_5", data.Ni_Cal_1_5);
+      pushField("Mn_Result_1_5", data.Mn_Result_1_5);
+      pushField("Mn_Cal_1_5", data.Mn_Cal_1_5);
+      pushField("Cr_Result_1_5", data.Cr_Result_1_5);
+      pushField("Cr_Cal_1_5", data.Cr_Cal_1_5);
+      pushField("Cu_Result_1_5", data.Cu_Result_1_5);
+      pushField("Cu_Cal_1_5", data.Cu_Cal_1_5);
+      pushField("Fe_Result_1_5", data.Fe_Result_1_5);
+      pushField("Fe_Cal_1_5", data.Fe_Cal_1_5);
+      pushField("Pb_Result_1_5", data.Pb_Result_1_5);
+      pushField("Pb_Cal_1_5", data.Pb_Cal_1_5);
+      pushField("Cd_Result_1_5", data.Cd_Result_1_5);
+      pushField("Cd_Cal_1_5", data.Cd_Cal_1_5);
+      pushField("SampleUse_2_1", data.SampleUse_2_1);
+      pushField("Dilution_2_1", data.Dilution_2_1);
+      pushField("Zn_Result_2_1", data.Zn_Result_2_1);
+      pushField("Zn_Cal_2_1", data.Zn_Cal_2_1);
+      pushField("Ni_Result_2_1", data.Ni_Result_2_1);
+      pushField("Ni_Cal_2_1", data.Ni_Cal_2_1);
+      pushField("Mn_Result_2_1", data.Mn_Result_2_1);
+      pushField("Mn_Cal_2_1", data.Mn_Cal_2_1);
+      pushField("Cr_Result_2_1", data.Cr_Result_2_1);
+      pushField("Cr_Cal_2_1", data.Cr_Cal_2_1);
+      pushField("Cu_Result_2_1", data.Cu_Result_2_1);
+      pushField("Cu_Cal_2_1", data.Cu_Cal_2_1);
+      pushField("Fe_Result_2_1", data.Fe_Result_2_1);
+      pushField("Fe_Cal_2_1", data.Fe_Cal_2_1);
+      pushField("Pb_Result_2_1", data.Pb_Result_2_1);
+      pushField("Pb_Cal_2_1", data.Pb_Cal_2_1);
+      pushField("Cd_Result_2_1", data.Cd_Result_2_1);
+      pushField("Cd_Cal_2_1", data.Cd_Cal_2_1);
+      pushField("SampleUse_2_2", data.SampleUse_2_2);
+      pushField("Dilution_2_2", data.Dilution_2_2);
+      pushField("Zn_Result_2_2", data.Zn_Result_2_2);
+      pushField("Zn_Cal_2_2", data.Zn_Cal_2_2);
+      pushField("Ni_Result_2_2", data.Ni_Result_2_2);
+      pushField("Ni_Cal_2_2", data.Ni_Cal_2_2);
+      pushField("Mn_Result_2_2", data.Mn_Result_2_2);
+      pushField("Mn_Cal_2_2", data.Mn_Cal_2_2);
+      pushField("Cr_Result_2_2", data.Cr_Result_2_2);
+      pushField("Cr_Cal_2_2", data.Cr_Cal_2_2);
+      pushField("Cu_Result_2_2", data.Cu_Result_2_2);
+      pushField("Cu_Cal_2_2", data.Cu_Cal_2_2);
+      pushField("Fe_Result_2_2", data.Fe_Result_2_2);
+      pushField("Fe_Cal_2_2", data.Fe_Cal_2_2);
+      pushField("Pb_Result_2_2", data.Pb_Result_2_2);
+      pushField("Pb_Cal_2_2", data.Pb_Cal_2_2);
+      pushField("Cd_Result_2_2", data.Cd_Result_2_2);
+      pushField("Cd_Cal_2_2", data.Cd_Cal_2_2);
+      pushField("SampleUse_2_3", data.SampleUse_2_3);
+      pushField("Dilution_2_3", data.Dilution_2_3);
+      pushField("Zn_Result_2_3", data.Zn_Result_2_3);
+      pushField("Zn_Cal_2_3", data.Zn_Cal_2_3);
+      pushField("Ni_Result_2_3", data.Ni_Result_2_3);
+      pushField("Ni_Cal_2_3", data.Ni_Cal_2_3);
+      pushField("Mn_Result_2_3", data.Mn_Result_2_3);
+      pushField("Mn_Cal_2_3", data.Mn_Cal_2_3);
+      pushField("Cr_Result_2_3", data.Cr_Result_2_3);
+      pushField("Cr_Cal_2_3", data.Cr_Cal_2_3);
+      pushField("Cu_Result_2_3", data.Cu_Result_2_3);
+      pushField("Cu_Cal_2_3", data.Cu_Cal_2_3);
+      pushField("Fe_Result_2_3", data.Fe_Result_2_3);
+      pushField("Fe_Cal_2_3", data.Fe_Cal_2_3);
+      pushField("Pb_Result_2_3", data.Pb_Result_2_3);
+      pushField("Pb_Cal_2_3", data.Pb_Cal_2_3);
+      pushField("Cd_Result_2_3", data.Cd_Result_2_3);
+      pushField("Cd_Cal_2_3", data.Cd_Cal_2_3);
+      pushField("SampleUse_2_4", data.SampleUse_2_4);
+      pushField("Dilution_2_4", data.Dilution_2_4);
+      pushField("Zn_Result_2_4", data.Zn_Result_2_4);
+      pushField("Zn_Cal_2_4", data.Zn_Cal_2_4);
+      pushField("Ni_Result_2_4", data.Ni_Result_2_4);
+      pushField("Ni_Cal_2_4", data.Ni_Cal_2_4);
+      pushField("Mn_Result_2_4", data.Mn_Result_2_4);
+      pushField("Mn_Cal_2_4", data.Mn_Cal_2_4);
+      pushField("Cr_Result_2_4", data.Cr_Result_2_4);
+      pushField("Cr_Cal_2_4", data.Cr_Cal_2_4);
+      pushField("Cu_Result_2_4", data.Cu_Result_2_4);
+      pushField("Cu_Cal_2_4", data.Cu_Cal_2_4);
+      pushField("Fe_Result_2_4", data.Fe_Result_2_4);
+      pushField("Fe_Cal_2_4", data.Fe_Cal_2_4);
+      pushField("Pb_Result_2_4", data.Pb_Result_2_4);
+      pushField("Pb_Cal_2_4", data.Pb_Cal_2_4);
+      pushField("Cd_Result_2_4", data.Cd_Result_2_4);
+      pushField("Cd_Cal_2_4", data.Cd_Cal_2_4);
+      pushField("SampleUse_2_5", data.SampleUse_2_5);
+      pushField("Dilution_2_5", data.Dilution_2_5);
+      pushField("Zn_Result_2_5", data.Zn_Result_2_5);
+      pushField("Zn_Cal_2_5", data.Zn_Cal_2_5);
+      pushField("Ni_Result_2_5", data.Ni_Result_2_5);
+      pushField("Ni_Cal_2_5", data.Ni_Cal_2_5);
+      pushField("Mn_Result_2_5", data.Mn_Result_2_5);
+      pushField("Mn_Cal_2_5", data.Mn_Cal_2_5);
+      pushField("Cr_Result_2_5", data.Cr_Result_2_5);
+      pushField("Cr_Cal_2_5", data.Cr_Cal_2_5);
+      pushField("Cu_Result_2_5", data.Cu_Result_2_5);
+      pushField("Cu_Cal_2_5", data.Cu_Cal_2_5);
+      pushField("Fe_Result_2_5", data.Fe_Result_2_5);
+      pushField("Fe_Cal_2_5", data.Fe_Cal_2_5);
+      pushField("Pb_Result_2_5", data.Pb_Result_2_5);
+      pushField("Pb_Cal_2_5", data.Pb_Cal_2_5);
+      pushField("Cd_Result_2_5", data.Cd_Result_2_5);
+      pushField("Cd_Cal_2_5", data.Cd_Cal_2_5);
+      pushField("Zn_Avg", data.Zn_Avg);
+      pushField("Zn_RPD", data.Zn_RPD);
+      pushField("Ni_Avg", data.Ni_Avg);
+      pushField("Ni_RPD", data.Ni_RPD);
+      pushField("Mn_Avg", data.Mn_Avg);
+      pushField("Mn_RPD", data.Mn_RPD);
+      pushField("Cr_Avg", data.Cr_Avg);
+      pushField("Cr_RPD", data.Cr_RPD);
+      pushField("Cu_Avg", data.Cu_Avg);
+      pushField("Cu_RPD", data.Cu_RPD);
+      pushField("Fe_Avg", data.Fe_Avg);
+      pushField("Fe_RPD", data.Fe_RPD);
+      pushField("Pb_Avg", data.Pb_Avg);
+      pushField("Pb_RPD", data.Pb_RPD);
+      pushField("Cd_Avg", data.Cd_Avg);
+      pushField("Cd_RPD", data.Cd_RPD);
+      pushField("Select_L", data.Select_L);
+      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("AnalysisDate", now);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[ICP]
       SET ${fields.join(',\n')}
       WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
       `;
@@ -4507,6 +5450,630 @@ router.post('/WWT/approveRejectCOD', async (req, res) => {
   }
 });
 
+router.post('/WWT/approveRejectICP', async (req, res) => {
+  console.log("--approveRejectICP--");
+  // console.log(req.body);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    let itemStatusValue = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+      if (data.DECISIONUSER !== '') {
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Status", 'APPROVE');
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query1 = `
+        UPDATE [WWT].[dbo].[ICP]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query1 + '\n';
+
+        fields = [];
+        let itemStatus = data.ItemStatus;
+        pushField("JobApprover", req.body.UserAnalysis);
+        pushField("JobApproveDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", 'APPROVE ITEM');
+        pushField("JobStatus", 'COMPLETE');
+        if (itemStatus === 'FINISH ITEM') {
+          if (data.ItemName === 'Zn') {
+            if (data.Zn_Avg !== null && data.Zn_Avg !== undefined && data.Zn_Avg !== '') {
+              pushField("Result_1", data.Zn_Avg);
+              pushField("ResultApprove", data.Zn_Avg);
+            } else {
+              const calList = [
+                data.Zn_Cal_1_1,
+                data.Zn_Cal_1_2,
+                data.Zn_Cal_1_3,
+                data.Zn_Cal_1_4,
+                data.Zn_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Ni') {
+            if (data.Ni_Avg !== null && data.Ni_Avg !== undefined && data.Ni_Avg !== '') {
+              pushField("Result_1", data.Ni_Avg);
+              pushField("ResultApprove", data.Ni_Avg);
+            } else {
+              const calList = [
+                data.Ni_Cal_1_1,
+                data.Ni_Cal_1_2,
+                data.Ni_Cal_1_3,
+                data.Ni_Cal_1_4,
+                data.Ni_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Mn') {
+            if (data.Mn_Avg !== null && data.Mn_Avg !== undefined && data.Mn_Avg !== '') {
+              pushField("Result_1", data.Mn_Avg);
+              pushField("ResultApprove", data.Mn_Avg);
+            } else {
+              const calList = [
+                data.Mn_Cal_1_1,
+                data.Mn_Cal_1_2,
+                data.Mn_Cal_1_3,
+                data.Mn_Cal_1_4,
+                data.Mn_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cr') {
+            if (data.Cr_Avg !== null && data.Cr_Avg !== undefined && data.Cr_Avg !== '') {
+              pushField("Result_1", data.Cr_Avg);
+              pushField("ResultApprove", data.Cr_Avg);
+            } else {
+              const calList = [
+                data.Cr_Cal_1_1,
+                data.Cr_Cal_1_2,
+                data.Cr_Cal_1_3,
+                data.Cr_Cal_1_4,
+                data.Cr_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cu') {
+            if (data.Cu_Avg !== null && data.Cu_Avg !== undefined && data.Cu_Avg !== '') {
+              pushField("Result_1", data.Cu_Avg);
+              pushField("ResultApprove", data.Cu_Avg);
+            } else {
+              const calList = [
+                data.Cu_Cal_1_1,
+                data.Cu_Cal_1_2,
+                data.Cu_Cal_1_3,
+                data.Cu_Cal_1_4,
+                data.Cu_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Fe') {
+            if (data.Fe_Avg !== null && data.Fe_Avg !== undefined && data.Fe_Avg !== '') {
+              pushField("Result_1", data.Fe_Avg);
+              pushField("ResultApprove", data.Fe_Avg);
+            } else {
+              const calList = [
+                data.Fe_Cal_1_1,
+                data.Fe_Cal_1_2,
+                data.Fe_Cal_1_3,
+                data.Fe_Cal_1_4,
+                data.Fe_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Pb') {
+            if (data.Pb_Avg !== null && data.Pb_Avg !== undefined && data.Pb_Avg !== '') {
+              pushField("Result_1", data.Pb_Avg);
+              pushField("ResultApprove", data.Pb_Avg);
+            } else {
+              const calList = [
+                data.Pb_Cal_1_1,
+                data.Pb_Cal_1_2,
+                data.Pb_Cal_1_3,
+                data.Pb_Cal_1_4,
+                data.Pb_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cd') {
+            if (data.Cd_Avg !== null && data.Cd_Avg !== undefined && data.Cd_Avg !== '') {
+              pushField("Result_1", data.Cd_Avg);
+              pushField("ResultApprove", data.Cd_Avg);
+            } else {
+              const calList = [
+                data.Cd_Cal_1_1,
+                data.Cd_Cal_1_2,
+                data.Cd_Cal_1_3,
+                data.Cd_Cal_1_4,
+                data.Cd_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+        } else if (itemStatus === 'FINISH RECHECK') {
+          if (data.ItemName === 'Zn') {
+            if (data.Zn_Avg !== null && data.Zn_Avg !== undefined && data.Zn_Avg !== '') {
+              pushField("Result_2", data.Zn_Avg);
+              pushField("ResultApprove", data.Zn_Avg);
+            } else {
+              const calList = [
+                data.Zn_Cal_1_1,
+                data.Zn_Cal_1_2,
+                data.Zn_Cal_1_3,
+                data.Zn_Cal_1_4,
+                data.Zn_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Ni') {
+            if (data.Ni_Avg !== null && data.Ni_Avg !== undefined && data.Ni_Avg !== '') {
+              pushField("Result_2", data.Ni_Avg);
+              pushField("ResultApprove", data.Ni_Avg);
+            } else {
+              const calList = [
+                data.Ni_Cal_1_1,
+                data.Ni_Cal_1_2,
+                data.Ni_Cal_1_3,
+                data.Ni_Cal_1_4,
+                data.Ni_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Mn') {
+            if (data.Mn_Avg !== null && data.Mn_Avg !== undefined && data.Mn_Avg !== '') {
+              pushField("Result_2", data.Mn_Avg);
+              pushField("ResultApprove", data.Mn_Avg);
+            } else {
+              const calList = [
+                data.Mn_Cal_1_1,
+                data.Mn_Cal_1_2,
+                data.Mn_Cal_1_3,
+                data.Mn_Cal_1_4,
+                data.Mn_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cr') {
+            if (data.Cr_Avg !== null && data.Cr_Avg !== undefined && data.Cr_Avg !== '') {
+              pushField("Result_2", data.Cr_Avg);
+              pushField("ResultApprove", data.Cr_Avg);
+            } else {
+              const calList = [
+                data.Cr_Cal_1_1,
+                data.Cr_Cal_1_2,
+                data.Cr_Cal_1_3,
+                data.Cr_Cal_1_4,
+                data.Cr_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cu') {
+            if (data.Cu_Avg !== null && data.Cu_Avg !== undefined && data.Cu_Avg !== '') {
+              pushField("Result_2", data.Cu_Avg);
+              pushField("ResultApprove", data.Cu_Avg);
+            } else {
+              const calList = [
+                data.Cu_Cal_1_1,
+                data.Cu_Cal_1_2,
+                data.Cu_Cal_1_3,
+                data.Cu_Cal_1_4,
+                data.Cu_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Fe') {
+            if (data.Fe_Avg !== null && data.Fe_Avg !== undefined && data.Fe_Avg !== '') {
+              pushField("Result_2", data.Fe_Avg);
+              pushField("ResultApprove", data.Fe_Avg);
+            } else {
+              const calList = [
+                data.Fe_Cal_1_1,
+                data.Fe_Cal_1_2,
+                data.Fe_Cal_1_3,
+                data.Fe_Cal_1_4,
+                data.Fe_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Pb') {
+            if (data.Pb_Avg !== null && data.Pb_Avg !== undefined && data.Pb_Avg !== '') {
+              pushField("Result_2", data.Pb_Avg);
+              pushField("ResultApprove", data.Pb_Avg);
+            } else {
+              const calList = [
+                data.Pb_Cal_1_1,
+                data.Pb_Cal_1_2,
+                data.Pb_Cal_1_3,
+                data.Pb_Cal_1_4,
+                data.Pb_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cd') {
+            if (data.Cd_Avg !== null && data.Cd_Avg !== undefined && data.Cd_Avg !== '') {
+              pushField("Result_2", data.Cd_Avg);
+              pushField("ResultApprove", data.Cd_Avg);
+            } else {
+              const calList = [
+                data.Cd_Cal_1_1,
+                data.Cd_Cal_1_2,
+                data.Cd_Cal_1_3,
+                data.Cd_Cal_1_4,
+                data.Cd_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+              pushField("ResultApprove", firstValidCal);
+            }
+          }
+        }
+
+        let query2 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query2 + '\n';
+
+      } else if (data.REJECT !== '') {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'FINISH ITEM') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else if (itemStatus === 'FINISH RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+        if (itemStatus === 'FINISH ITEM') {
+          if (data.ItemName === 'Zn') {
+            if (data.Zn_Avg !== null && data.Zn_Avg !== undefined && data.Zn_Avg !== '') {
+              pushField("Result_1", data.Zn_Avg);
+            } else {
+              const calList = [
+                data.Zn_Cal_1_1,
+                data.Zn_Cal_1_2,
+                data.Zn_Cal_1_3,
+                data.Zn_Cal_1_4,
+                data.Zn_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Ni') {
+            if (data.Ni_Avg !== null && data.Ni_Avg !== undefined && data.Ni_Avg !== '') {
+              pushField("Result_1", data.Ni_Avg);
+            } else {
+              const calList = [
+                data.Ni_Cal_1_1,
+                data.Ni_Cal_1_2,
+                data.Ni_Cal_1_3,
+                data.Ni_Cal_1_4,
+                data.Ni_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Mn') {
+            if (data.Mn_Avg !== null && data.Mn_Avg !== undefined && data.Mn_Avg !== '') {
+              pushField("Result_1", data.Mn_Avg);
+            } else {
+              const calList = [
+                data.Mn_Cal_1_1,
+                data.Mn_Cal_1_2,
+                data.Mn_Cal_1_3,
+                data.Mn_Cal_1_4,
+                data.Mn_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cr') {
+            if (data.Cr_Avg !== null && data.Cr_Avg !== undefined && data.Cr_Avg !== '') {
+              pushField("Result_1", data.Cr_Avg);
+            } else {
+              const calList = [
+                data.Cr_Cal_1_1,
+                data.Cr_Cal_1_2,
+                data.Cr_Cal_1_3,
+                data.Cr_Cal_1_4,
+                data.Cr_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cu') {
+            if (data.Cu_Avg !== null && data.Cu_Avg !== undefined && data.Cu_Avg !== '') {
+              pushField("Result_1", data.Cu_Avg);
+            } else {
+              const calList = [
+                data.Cu_Cal_1_1,
+                data.Cu_Cal_1_2,
+                data.Cu_Cal_1_3,
+                data.Cu_Cal_1_4,
+                data.Cu_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Fe') {
+            if (data.Fe_Avg !== null && data.Fe_Avg !== undefined && data.Fe_Avg !== '') {
+              pushField("Result_1", data.Fe_Avg);
+            } else {
+              const calList = [
+                data.Fe_Cal_1_1,
+                data.Fe_Cal_1_2,
+                data.Fe_Cal_1_3,
+                data.Fe_Cal_1_4,
+                data.Fe_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Pb') {
+            if (data.Pb_Avg !== null && data.Pb_Avg !== undefined && data.Pb_Avg !== '') {
+              pushField("Result_1", data.Pb_Avg);
+            } else {
+              const calList = [
+                data.Pb_Cal_1_1,
+                data.Pb_Cal_1_2,
+                data.Pb_Cal_1_3,
+                data.Pb_Cal_1_4,
+                data.Pb_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cd') {
+            if (data.Cd_Avg !== null && data.Cd_Avg !== undefined && data.Cd_Avg !== '') {
+              pushField("Result_1", data.Cd_Avg);
+            } else {
+              const calList = [
+                data.Cd_Cal_1_1,
+                data.Cd_Cal_1_2,
+                data.Cd_Cal_1_3,
+                data.Cd_Cal_1_4,
+                data.Cd_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_1", firstValidCal);
+            }
+          }
+        } else if (itemStatus === 'FINISH RECHECK') {
+          if (data.ItemName === 'Zn') {
+            if (data.Zn_Avg !== null && data.Zn_Avg !== undefined && data.Zn_Avg !== '') {
+              pushField("Result_2", data.Zn_Avg);
+            } else {
+              const calList = [
+                data.Zn_Cal_1_1,
+                data.Zn_Cal_1_2,
+                data.Zn_Cal_1_3,
+                data.Zn_Cal_1_4,
+                data.Zn_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Ni') {
+            if (data.Ni_Avg !== null && data.Ni_Avg !== undefined && data.Ni_Avg !== '') {
+              pushField("Result_2", data.Ni_Avg);
+            } else {
+              const calList = [
+                data.Ni_Cal_1_1,
+                data.Ni_Cal_1_2,
+                data.Ni_Cal_1_3,
+                data.Ni_Cal_1_4,
+                data.Ni_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Mn') {
+            if (data.Mn_Avg !== null && data.Mn_Avg !== undefined && data.Mn_Avg !== '') {
+              pushField("Result_2", data.Mn_Avg);
+            } else {
+              const calList = [
+                data.Mn_Cal_1_1,
+                data.Mn_Cal_1_2,
+                data.Mn_Cal_1_3,
+                data.Mn_Cal_1_4,
+                data.Mn_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cr') {
+            if (data.Cr_Avg !== null && data.Cr_Avg !== undefined && data.Cr_Avg !== '') {
+              pushField("Result_2", data.Cr_Avg);
+            } else {
+              const calList = [
+                data.Cr_Cal_1_1,
+                data.Cr_Cal_1_2,
+                data.Cr_Cal_1_3,
+                data.Cr_Cal_1_4,
+                data.Cr_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cu') {
+            if (data.Cu_Avg !== null && data.Cu_Avg !== undefined && data.Cu_Avg !== '') {
+              pushField("Result_2", data.Cu_Avg);
+            } else {
+              const calList = [
+                data.Cu_Cal_1_1,
+                data.Cu_Cal_1_2,
+                data.Cu_Cal_1_3,
+                data.Cu_Cal_1_4,
+                data.Cu_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Fe') {
+            if (data.Fe_Avg !== null && data.Fe_Avg !== undefined && data.Fe_Avg !== '') {
+              pushField("Result_2", data.Fe_Avg);
+            } else {
+              const calList = [
+                data.Fe_Cal_1_1,
+                data.Fe_Cal_1_2,
+                data.Fe_Cal_1_3,
+                data.Fe_Cal_1_4,
+                data.Fe_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Pb') {
+            if (data.Pb_Avg !== null && data.Pb_Avg !== undefined && data.Pb_Avg !== '') {
+              pushField("Result_2", data.Pb_Avg);
+            } else {
+              const calList = [
+                data.Pb_Cal_1_1,
+                data.Pb_Cal_1_2,
+                data.Pb_Cal_1_3,
+                data.Pb_Cal_1_4,
+                data.Pb_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+            }
+          }
+          if (data.ItemName === 'Cd') {
+            if (data.Cd_Avg !== null && data.Cd_Avg !== undefined && data.Cd_Avg !== '') {
+              pushField("Result_2", data.Cd_Avg);
+            } else {
+              const calList = [
+                data.Cd_Cal_1_1,
+                data.Cd_Cal_1_2,
+                data.Cd_Cal_1_3,
+                data.Cd_Cal_1_4,
+                data.Cd_Cal_1_5
+              ];
+              const firstValidCal = calList.find(v => v !== '-' && v !== null && v !== undefined && v !== '');
+              pushField("Result_2", firstValidCal);
+            }
+          }
+        }
+
+        let query3 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query3 + '\n';
+
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query4 = `
+        UPDATE [WWT].[dbo].[ICP]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query4 + '\n';
+      }
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
 router.post('/WWT/historyGraph', async (req, res) => {
   //-------------------------------------
   console.log("--historyGraph--");
@@ -4526,6 +6093,155 @@ router.post('/WWT/historyGraph', async (req, res) => {
     return res.status(200).json(output);
   } else {
     return res.status(400).json('ไม่พบข้อมูล');
+  }
+});
+
+router.post('/WWT/OCR_ICP', async (req, res) => {
+  console.log("--OCR_ICP--");
+
+  try {
+    let dataRow = req.body.dataRow;
+    // console.log(dataRow);
+    const now = ISOToLocal(new Date());
+    let insertQuery = '';
+
+    for (const data of dataRow) {
+      let fields = [];
+      function pushField(name, value) {
+        if (value !== '') {
+          const escapedValue = value.toString().replace(/'/g, "''");
+          fields.push(`[${name}] = '${escapedValue}'`);
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("BottleCode", data.BottleCode);
+      pushField("Branch", data.Branch);
+      pushField("R", data.R);
+      pushField("Dilution", data.DI);
+      pushField("Zn_Value", data.Zn_Value);
+      pushField("Ni_Value", data.Ni_Value);
+      pushField("Mn_Value", data.Mn_Value);
+      pushField("Cr_Value", data.Cr_Value);
+      pushField("Cu_Value", data.Cu_Value);
+      pushField("Fe_Value", data.Fe_Value);
+      pushField("Pb_Value", data.Pb_Value);
+      pushField("Cd_Value", data.Cd_Value);
+      pushField("User_Upload", data.User_Upload);
+      pushField("Upload_Date", now);
+
+      // INSERT
+      let insert = `
+        INSERT INTO [WWT].[dbo].[OCR_ICP] (
+        ${fields.map(field => field.split('=')[0].trim()).join(',\n')}
+        )
+        VALUES (
+        ${fields.map(field => field.split('=').slice(1).join('=').trim()).join(',\n')}
+        )
+        `;
+      insertQuery += insert + '\n';
+    }
+    // console.log(insertQuery);
+    let insertResult = await mssql.qurey(insertQuery);
+
+    if (insertResult["rowsAffected"][0] > 0) {
+      console.log("Insert Success");
+      return res.status(200).json({ message: 'Upload Success' });
+    } else {
+      console.log("Insert Failed");
+      return res.status(400).json('Upload Failed');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/getOCRICPValue', async (req, res) => {
+  console.log("--getOCRICPValue--");
+
+  try {
+    const dataRow = JSON.parse(req.body.dataRow);
+    const branch = req.body.Branch;
+
+    const uniqueBottleCodes = [...new Set(dataRow.map(item => item.BOTTLECODE))];
+
+    const baseBottleCodes = [
+      'R2', 'CCV-1', 'CCV-2', 'CCV-3',
+      'BLK', 'LFB', 'LFM', 'LFMD'
+    ];
+
+    const selectColumns = `ID, BottleCode, Branch, R, Dilution, Zn_Value, 
+      Ni_Value, Mn_Value, Cr_Value, Cu_Value, Fe_Value, Pb_Value, Cd_Value, User_Upload, Upload_Date`;
+
+    const buildTop1Query = (condition) => {
+      return `
+        SELECT TOP 1 ${selectColumns}
+        FROM [WWT].[dbo].[OCR_ICP]
+        WHERE ${condition}
+          AND Branch = '${branch}'
+        ORDER BY Upload_Date DESC
+      `;
+    };
+
+    const baseQueryParts = baseBottleCodes.map(code =>
+      buildTop1Query(`BottleCode = '${code}'`)
+    );
+
+    const likeQueryPartsA = uniqueBottleCodes.map(code => `
+        SELECT TOP 5 ${selectColumns}
+        FROM (
+          SELECT ${selectColumns},
+            ROW_NUMBER() OVER (PARTITION BY Dilution ORDER BY Upload_Date DESC) AS rn
+          FROM [WWT].[dbo].[OCR_ICP]
+          WHERE BottleCode LIKE '%${code}%'
+            AND R = 'A'
+            AND Branch = '${branch}'
+        ) t
+        WHERE t.rn = 1
+    `);
+
+    const likeQueryPartsB = uniqueBottleCodes.map(code => `
+        SELECT TOP 5 ${selectColumns}
+        FROM (
+          SELECT ${selectColumns},
+            ROW_NUMBER() OVER (PARTITION BY Dilution ORDER BY Upload_Date DESC) AS rn
+          FROM [WWT].[dbo].[OCR_ICP]
+          WHERE BottleCode LIKE '%${code}%'
+            AND R = 'B'
+            AND Branch = '${branch}'
+        ) t
+        WHERE t.rn = 1
+    `);
+
+    const allQueryParts = [
+      ...baseQueryParts,
+      ...likeQueryPartsA,
+      ...likeQueryPartsB
+    ];
+
+    // ✅ ห่อด้วย subquery แล้วค่อย ORDER BY
+    const finalQuery = `
+      SELECT * FROM (
+        ${allQueryParts.join(" UNION ALL ")}
+      ) AS combined
+      ORDER BY Upload_Date DESC;
+    `;
+
+    console.log(finalQuery);
+
+    const db = await mssql.qurey(finalQuery);
+
+    if (db.recordset && db.recordset.length > 0) {
+      return res.status(200).json(db.recordset);
+    } else {
+      return res.status(400).json('ไม่พบข้อมูล');
+    }
+
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: e.toString() });
   }
 });
 
