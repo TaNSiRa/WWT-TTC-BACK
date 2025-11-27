@@ -2167,7 +2167,7 @@ router.post('/WWT/SearchJobList', async (req, res) => {
   ORDER BY ReqDate DESC;
   `;
 
-  console.log(query);
+  // console.log(query);
   try {
     let db = await mssql.qurey(query);
     if (db["recordsets"].length > 0) {
