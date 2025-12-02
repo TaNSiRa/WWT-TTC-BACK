@@ -1939,6 +1939,58 @@ router.post('/WWT/listNewJob', async (req, res) => {
       allQueries += query + '\n';
     }
     let updateJobCode = await mssql.qurey(allQueries);
+
+    for (const data of dataRow) {
+      const sampleCode = data.SAMPLECODE;
+      console.log("Checking SampleCode:", sampleCode);
+      const checkQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus IN ('LIST ITEM', 'LIST RECHECK', 'FINISH ITEM', 'FINISH RECHECK', 'APPROVE ITEM') THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+      // console.log(checkQuery);
+      const result = await mssql.qurey(checkQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        // console.log("inside");
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT ANALYSIS'
+        WHERE SampleCode = '${sampleCode}';
+      `;
+        // console.log(updateSampleStatusQuery);
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("SampleStatus updated to SEND SAMPLE");
+      }
+      // console.log(dataRow);
+      const ReqNo = data.REQNO;
+      // console.log("Checking ReqNo:", ReqNo);
+      const checkSampleQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT ANALYSIS' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+      // console.log(checkSampleQuery);
+      const Sampleresult = await mssql.qurey(checkSampleQuery);
+      const Sampletotal = Sampleresult.recordset[0].Total;
+      const Samplesent = Sampleresult.recordset[0].Sent;
+
+      if (Sampletotal > 0 && Sampletotal === Samplesent) {
+        // console.log("inside");
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT ANALYSIS'
+        WHERE ReqNo = '${ReqNo}';
+      `;
+        // console.log(updateReqStatusQuery);
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("SampleStatus updated to SEND SAMPLE");
+      }
+    }
     // console.log(allQueries);
     // STEP 2: CREATE INSERT QUERY
     if (updateJobCode["rowsAffected"][0] > 0) {
@@ -2009,7 +2061,7 @@ router.post('/WWT/listInsertJob', async (req, res) => {
 
   try {
     let dataRow = JSON.parse(req.body.dataRow);
-    console.log(dataRow);
+    // console.log(dataRow);
     let insName = req.body.Instrument;
     let userListJob = req.body.UserListJob;
     const now = ISOToLocal(new Date());
@@ -2052,6 +2104,59 @@ router.post('/WWT/listInsertJob', async (req, res) => {
       allQueries += query + '\n';
     }
     let updateJobCode = await mssql.qurey(allQueries);
+
+    for (const data of dataRow) {
+      const sampleCode = data.SAMPLECODE;
+      console.log("Checking SampleCode:", sampleCode);
+      const checkQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus IN ('LIST ITEM', 'LIST RECHECK', 'FINISH ITEM', 'FINISH RECHECK', 'APPROVE ITEM') THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+      // console.log(checkQuery);
+      const result = await mssql.qurey(checkQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        // console.log("inside");
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT ANALYSIS'
+        WHERE SampleCode = '${sampleCode}';
+      `;
+        // console.log(updateSampleStatusQuery);
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("SampleStatus updated to SEND SAMPLE");
+      }
+      // console.log(dataRow);
+      const ReqNo = data.REQNO;
+      // console.log("Checking ReqNo:", ReqNo);
+      const checkSampleQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT ANALYSIS' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+      // console.log(checkSampleQuery);
+      const Sampleresult = await mssql.qurey(checkSampleQuery);
+      const Sampletotal = Sampleresult.recordset[0].Total;
+      const Samplesent = Sampleresult.recordset[0].Sent;
+
+      if (Sampletotal > 0 && Sampletotal === Samplesent) {
+        // console.log("inside");
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT ANALYSIS'
+        WHERE ReqNo = '${ReqNo}';
+      `;
+        // console.log(updateReqStatusQuery);
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("SampleStatus updated to SEND SAMPLE");
+      }
+    }
+
     // console.log(allQueries);
     // STEP 2: CREATE INSERT QUERY
     if (updateJobCode["rowsAffected"][0] > 0) {
@@ -2286,7 +2391,7 @@ router.post('/WWT/jobAvailable', async (req, res) => {
                WHERE I.UserListJob = '${req.body.UserListJob}' AND R.JobStatus = 'IN PROCESS'
                ORDER BY I.JobCode;`;
   // let query = `SELECT * From [WWT].[dbo].[${req.body.Instrument}] WHERE UserListJob = '${req.body.UserListJob}' order by JobCode DESC`;
-  console.log(query);
+  // console.log(query);
   let db = await mssql.qurey(query);
   // console.log(db);
   if (db["recordsets"].length > 0) {
@@ -2396,7 +2501,7 @@ router.post('/WWT/returnRequest', async (req, res) => {
 
   try {
     let dataRow = JSON.parse(req.body.dataRow);
-    console.log(dataRow);
+    // console.log(dataRow);
     let insName = dataRow.JOBCODE?.split('-').pop();
     let ID = dataRow.ID;
     let BottleCode = dataRow.BOTTLECODE;
@@ -2729,7 +2834,7 @@ router.post('/WWT/TempSaveTDS', async (req, res) => {
 
   try {
     let dataRow = JSON.parse(req.body.dataRow);
-    console.log(dataRow);
+    // console.log(dataRow);
     let allQueries = '';
     for (const data of dataRow) {
       let fields = [];
@@ -2819,7 +2924,7 @@ router.post('/WWT/TempSaveTSS', async (req, res) => {
 
   try {
     let dataRow = JSON.parse(req.body.dataRow);
-    console.log(dataRow);
+    // console.log(dataRow);
     let allQueries = '';
     for (const data of dataRow) {
       let fields = [];
@@ -2909,7 +3014,7 @@ router.post('/WWT/TempSaveCOD', async (req, res) => {
 
   try {
     let dataRow = JSON.parse(req.body.dataRow);
-    console.log(dataRow);
+    // console.log(dataRow);
     let allQueries = '';
     for (const data of dataRow) {
       let fields = [];
@@ -2996,7 +3101,7 @@ router.post('/WWT/TempSaveICP', async (req, res) => {
   try {
     let dataRow = JSON.parse(req.body.dataRow);
     dataRow = dataRow.filter(item => item.ID && item.ID.trim() !== "");
-    console.log(dataRow);
+    // console.log(dataRow);
     let allQueries = '';
     for (const data of dataRow) {
       let fields = [];
@@ -6229,7 +6334,7 @@ router.post('/WWT/getOCRICPValue', async (req, res) => {
       ORDER BY Upload_Date DESC;
     `;
 
-    console.log(finalQuery);
+    // console.log(finalQuery);
 
     const db = await mssql.qurey(finalQuery);
 
@@ -6242,6 +6347,38 @@ router.post('/WWT/getOCRICPValue', async (req, res) => {
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: e.toString() });
+  }
+});
+
+router.post('/WWT/JobWaitApprove', async (req, res) => {
+  console.log("--JobWaitApprove--");
+  let output = [];
+  let query = `
+  WITH R AS (
+    SELECT  *,
+            ROW_NUMBER() OVER (PARTITION BY JobCode ORDER BY AnalysisDue) AS rn
+    FROM [WWT].[dbo].[Request]
+    WHERE JobStatus = 'FINISH'
+  )
+  SELECT TOP 10000 *
+  FROM R
+  WHERE rn = 1
+  ORDER BY ReqDate DESC;
+  `;
+
+  // console.log(query);
+  try {
+    let db = await mssql.qurey(query);
+    if (db["recordsets"].length > 0) {
+      let buffer = db["recordsets"][0];
+      output = buffer;
+      return res.status(200).json(output);
+    } else {
+      return res.status(400).json('ไม่พบข้อมูล');
+    }
+  } catch (error) {
+    console.error("Query Error:", error);
+    return res.status(500).json('เกิดข้อผิดพลาดที่ server');
   }
 });
 
