@@ -1942,7 +1942,7 @@ router.post('/WWT/listNewJob', async (req, res) => {
 
     for (const data of dataRow) {
       const sampleCode = data.SAMPLECODE;
-      console.log("Checking SampleCode:", sampleCode);
+      // console.log("Checking SampleCode:", sampleCode);
       const checkQuery = `
       SELECT COUNT(*) AS Total,
              SUM(CASE WHEN ItemStatus IN ('LIST ITEM', 'LIST RECHECK', 'FINISH ITEM', 'FINISH RECHECK', 'APPROVE ITEM') THEN 1 ELSE 0 END) AS Sent
@@ -2107,7 +2107,7 @@ router.post('/WWT/listInsertJob', async (req, res) => {
 
     for (const data of dataRow) {
       const sampleCode = data.SAMPLECODE;
-      console.log("Checking SampleCode:", sampleCode);
+      // console.log("Checking SampleCode:", sampleCode);
       const checkQuery = `
       SELECT COUNT(*) AS Total,
              SUM(CASE WHEN ItemStatus IN ('LIST ITEM', 'LIST RECHECK', 'FINISH ITEM', 'FINISH RECHECK', 'APPROVE ITEM') THEN 1 ELSE 0 END) AS Sent
@@ -2269,7 +2269,7 @@ router.post('/WWT/SearchJobList', async (req, res) => {
   SELECT TOP 10000 *
   FROM R
   WHERE rn = 1
-  ORDER BY ReqDate DESC;
+  ORDER BY AnalysisDue ,JobCode DESC;
   `;
 
   // console.log(query);
@@ -4898,7 +4898,79 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
     }
     // console.log(allQueries);
     let db = await mssql.qurey(allQueries);
-    console.log(db);
+    // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
 
     if (db["rowsAffected"][0] > 0) {
       console.log("Update Success");
@@ -5015,7 +5087,79 @@ router.post('/WWT/approveRejectPH', async (req, res) => {
     }
     // console.log(allQueries);
     let db = await mssql.qurey(allQueries);
-    console.log(db);
+    // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
 
     if (db["rowsAffected"][0] > 0) {
       console.log("Update Success");
@@ -5133,6 +5277,78 @@ router.post('/WWT/approveRejectTF', async (req, res) => {
     // console.log(allQueries);
     let db = await mssql.qurey(allQueries);
     // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
 
     if (db["rowsAffected"][0] > 0) {
       console.log("Update Success");
@@ -5269,6 +5485,78 @@ router.post('/WWT/approveRejectTDS', async (req, res) => {
     // console.log(allQueries);
     let db = await mssql.qurey(allQueries);
     // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
 
     if (db["rowsAffected"][0] > 0) {
       console.log("Update Success");
@@ -5405,6 +5693,78 @@ router.post('/WWT/approveRejectTSS', async (req, res) => {
     // console.log(allQueries);
     let db = await mssql.qurey(allQueries);
     // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
 
     if (db["rowsAffected"][0] > 0) {
       console.log("Update Success");
@@ -5541,6 +5901,78 @@ router.post('/WWT/approveRejectCOD', async (req, res) => {
     // console.log(allQueries);
     let db = await mssql.qurey(allQueries);
     // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
 
     if (db["rowsAffected"][0] > 0) {
       console.log("Update Success");
@@ -5560,6 +5992,7 @@ router.post('/WWT/approveRejectICP', async (req, res) => {
   // console.log(req.body);
   try {
     let dataRow = JSON.parse(req.body.dataRow);
+    console.log(dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
     let itemStatusValue = '';
@@ -6165,6 +6598,78 @@ router.post('/WWT/approveRejectICP', async (req, res) => {
     // console.log(allQueries);
     let db = await mssql.qurey(allQueries);
     // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
 
     if (db["rowsAffected"][0] > 0) {
       console.log("Update Success");
@@ -6353,17 +6858,23 @@ router.post('/WWT/getOCRICPValue', async (req, res) => {
 router.post('/WWT/JobWaitApprove', async (req, res) => {
   console.log("--JobWaitApprove--");
   let output = [];
+  let ReqBranch = '';
+  if (req.body.Branch == 'RAYONG') {
+    ReqBranch = 'TPK HES LAB'
+  } else (
+    ReqBranch = 'TPK BANGPOO LAB'
+  );
   let query = `
   WITH R AS (
     SELECT  *,
             ROW_NUMBER() OVER (PARTITION BY JobCode ORDER BY AnalysisDue) AS rn
     FROM [WWT].[dbo].[Request]
-    WHERE JobStatus = 'FINISH'
+    WHERE JobStatus = 'FINISH' AND ReqBranch = '${ReqBranch}'
   )
   SELECT TOP 10000 *
   FROM R
   WHERE rn = 1
-  ORDER BY ReqDate DESC;
+  ORDER BY AnalysisDue DESC, JobCode;
   `;
 
   // console.log(query);
@@ -6379,6 +6890,193 @@ router.post('/WWT/JobWaitApprove', async (req, res) => {
   } catch (error) {
     console.error("Query Error:", error);
     return res.status(500).json('เกิดข้อผิดพลาดที่ server');
+  }
+});
+
+router.post('/WWT/ReportWaitApprove', async (req, res) => {
+  console.log("--ReportWaitApprove--");
+  let output = [];
+  let ReqBranch = '';
+  if (req.body.Branch == 'RAYONG') {
+    ReqBranch = 'TPK HES LAB'
+  } else (
+    ReqBranch = 'TPK BANGPOO LAB'
+  );
+
+  let query = `
+  SELECT *
+  From [WWT].[dbo].[Request]
+  WHERE ItemStatus = 'APPROVE ITEM' AND ReqBranch = '${ReqBranch}'
+  ORDER BY AnalysisDue, BottleCode;
+  `;
+  // let query = `
+  // WITH R AS (
+  //     SELECT *,
+  //            ROW_NUMBER() OVER (PARTITION BY ReqNo ORDER BY ReqDate DESC) AS rn
+  //     FROM [WWT].[dbo].[Request]
+  //     WHERE ReqStatus = 'WAIT REPORT'
+  //       AND ReqBranch = '${ReqBranch}'
+  //   )
+  // SELECT TOP 10000 *
+  // FROM R
+  // WHERE rn = 1
+  // ORDER BY ReqDate DESC;
+  // `;
+
+  // console.log(query);
+  try {
+    let db = await mssql.qurey(query);
+    if (db["recordsets"].length > 0) {
+      let buffer = db["recordsets"][0];
+      output = buffer;
+      return res.status(200).json(output);
+    } else {
+      return res.status(400).json('ไม่พบข้อมูล');
+    }
+  } catch (error) {
+    console.error("Query Error:", error);
+    return res.status(500).json('เกิดข้อผิดพลาดที่ server');
+  }
+});
+
+router.post('/WWT/approveRejectReport', async (req, res) => {
+  console.log("--approveRejectReport--");
+  // console.log(req.body);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    let ReportApprover = req.body.ReportApprover;
+    console.log(dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+      let INSNAME = data.INSNAME;
+      console.log(INSNAME);
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+      if (data.ApproveReject == 'APPROVE') {
+        fields = [];
+        pushField("ReportApprover", ReportApprover);
+        pushField("ReportApproveDate", now);
+        pushField("ItemStatus", 'COMPLETE');
+
+        let query2 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query2 + '\n';
+
+      } else if (data.ApproveReject == 'REJECT') {
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", 'RECHECK ITEM');
+        pushField("JobStatus", '');
+        pushField("ResultApprove", '');
+
+        let query3 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query3 + '\n';
+
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", ReportApprover);
+        pushField("DecisionDate", now);
+
+        let query4 = `
+        UPDATE [WWT].[dbo].[${INSNAME}]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query4 + '\n';
+      }
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    for (const data of dataRow) {
+
+      const sampleCode = data.SAMPLECODE;
+      const ReqNo = data.REQNO;
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'COMPLETE' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'COMPLETE'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'COMPLETE' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'COMPLETE'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
   }
 });
 

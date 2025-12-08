@@ -3,6 +3,7 @@ const router = express.Router();
 
 
 router.use(require("./flow/001/01TLAMAIN"))
+router.use(require("./flow/001/Report"))
 
 
 // router.use(require("./flow/003/flow003"))
