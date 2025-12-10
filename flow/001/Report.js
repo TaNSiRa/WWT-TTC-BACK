@@ -9,7 +9,7 @@ router.post("/WWT/CreateReport", async (req, res) => {
   console.log("CreateReport");
   try {
     let dataRow = JSON.parse(req.body.dataRow);
-    console.log(dataRow);
+    // console.log(dataRow);
     // Loop through each report key
     const reportKeys = Object.keys(dataRow);
     // เข้าถึงข้อมูลแรกของ dataRow
