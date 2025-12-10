@@ -28,7 +28,7 @@ exports.find = async (db_input, collection_input, input, SortBy) => {
   const db = client.db(db_input);
   const collection = db.collection(collection_input);
   let res = await collection.find(input).limit(1000).sort(SortBy).toArray();
-
+  // console.log('input:', input);
   await client.close();
 
   return res;

@@ -1126,12 +1126,13 @@ router.post('/TLA/GETSAMPLINGPERSON', async (req, res) => {
   let input = req.body;
   //-------------------------------------
   let output = []
-  if (input['BRANCH'] != undefined) {
-    let find01 = await mongodb.find("TALMASTER", "REGISTEREDLIST", { "BRANCH": input['BRANCH'] });
-    // console.log(find01)
-    output = find01;
+  // if (input['BRANCH'] != undefined) {
+  // let find01 = await mongodb.find("TALMASTER", "REGISTEREDLIST", { "BRANCH": input['BRANCH'] });
+  let find01 = await mongodb.find("TALMASTER", "REGISTEREDLIST", { "activeid": `active_id` });
+  // console.log(find01)
+  output = find01;
 
-  }
+  // }
   //-------------------------------------
   res.json(output);
 });
@@ -1872,8 +1873,25 @@ router.post('/WWT/getReqDetail', async (req, res) => {
   console.log("--getReqDetail--");
   //-------------------------------------
   let output = [];
-  let query = `SELECT * From [WWT].[dbo].[Request] WHERE ReqNo = '${req.body.ReqNo}' order by BottleNo, ItemNo`;
+  // let query = `SELECT * From [WWT].[dbo].[Request] WHERE ReqNo = '${req.body.ReqNo}' order by BottleNo, ItemNo`;
+  let query = `SELECT 
+                    I.*, 
+                    R1.FullName AS JobApprover_FullName,
+                    R1.RegistrationNo AS JobApprover_RegistrationNo,
+                    R2.FullName AS ReportApprover_FullName,
+                    R2.RegistrationNo AS ReportApprover_RegistrationNo
+                FROM [WWT].[dbo].[Request] I
 
+                LEFT JOIN [SAR].[dbo].[Master_User] R1
+                    ON I.JobApprover COLLATE Thai_CI_AS = R1.Name COLLATE Thai_CI_AS
+
+                LEFT JOIN [SAR].[dbo].[Master_User] R2
+                    ON I.ReportApprover COLLATE Thai_CI_AS = R2.Name COLLATE Thai_CI_AS
+
+                WHERE I.ReqNo = '${req.body.ReqNo}'
+                ORDER BY I.BottleNo, I.ItemNo;
+                `;
+  // console.log(query);
   let db = await mssql.qurey(query);
   // console.log(db);
   if (db["recordsets"].length > 0) {
