@@ -36,7 +36,7 @@ router.post("/WWT/CreateReport", async (req, res) => {
         }
       }
     }
-    console.log("Oldest SAMPDATE:", oldestSampDate);
+    // console.log("Oldest SAMPDATE:", oldestSampDate);
     // ดึงปีและเดือนจาก SAMPDATE ที่เก่าสุด
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const year = oldestSampDate ? oldestSampDate.getFullYear().toString() : new Date().getFullYear().toString();
