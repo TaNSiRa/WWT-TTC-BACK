@@ -3,11 +3,16 @@ const express = require("express");
 const router = express.Router();
 const fs = require("fs");
 const path = require("path");
+var mssql = require('../../function/mssql');
 var mongodb = require('../../function/mongodb');
 
 router.post("/WWT/CreateReport", async (req, res) => {
   console.log("CreateReport");
   try {
+    let query = `SELECT Name, Branch From [SAR].[dbo].[Master_User]`;
+    let db = await mssql.qurey(query);
+    let masterUser = db["recordsets"][0];
+
     let dataRow = JSON.parse(req.body.dataRow);
     // console.log(dataRow);
     // Loop through each report key
@@ -44,6 +49,7 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
     // สร้าง folder structure
     const custName = firstData[0].CUSTNAME;
+    const branch = firstData[0].REQBRANCH;
     const basePath = "C:\\AutomationProject\\WWT\\Report";
     const custPath = path.join(basePath, custName);
     const yearPath = path.join(custPath, year);
@@ -62,7 +68,7 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
     // กำหนด savePath ใหม่
     const savePath = path.join(monthPath, firstData[0].REQNO + ".pdf");
-    const doc = new PDFDocument({ margin: 30, size: "A4" });
+    const doc = new PDFDocument({ margin: 15, size: "A4" });
     const writeStream = fs.createWriteStream(savePath);
 
     doc.registerFont('AngsanaNew', 'assets/fonts/angsa.ttf');
@@ -81,14 +87,14 @@ router.post("/WWT/CreateReport", async (req, res) => {
     if (firstData && firstData[0] && firstData[0].REQBRANCH == 'TPK HES LAB') {
       myCompanyAddress = '500/19 MOO 3, WHA EASTERN SEABOARD INDUSTRIAL ESTATE1, TASIT, PLUAK DAENG, RAYONG 21140';
       tel = 'TEL: 0-3365-8800, FAX: 0-3365-8883';
-      labNo = 'LABORATORY No. ว - 285';
-      labNoRemark = 'Laboratory No. ว-256';
+      labNo = 'LABORATORY No. ว - 256';
+      labNoRemark = 'Laboratory No. ว-285';
       DocNo = 'FR-LCR-02/014-03-05/01/2';
     } else {
       myCompanyAddress = '570 MOO 4 BANGPOO INDUSTRIAL ESTATE SOI 12, SUKHUMVIT ROAD, PRAKASA, MUANG, SAMUTPRAKARN 10280';
       tel = 'TEL: 0-2324-6600, FAX: 0-2324-6660';
-      labNo = 'LABORATORY No. ว - 256';
-      labNoRemark = 'Laboratory No. ว-285';
+      labNo = 'LABORATORY No. ว - 285';
+      labNoRemark = 'Laboratory No. ว-256';
       DocNo = 'FR-CTC-02/004-04-05/01/26';
     }
 
@@ -133,9 +139,9 @@ router.post("/WWT/CreateReport", async (req, res) => {
         // 2. LABORATORY No. (ด้านขวา)
         doc.fontSize(12).font('AngsanaNew-Bold');
         if (currentPage.showLabNo) {
-          doc.text(labNo, 400, yPos, { align: 'right' });
+          doc.text(labNo, 350, yPos, { width: 200, align: 'right' });
         } else {
-          doc.text('LABORATORY No. -', 400, yPos, { align: 'right' });
+          doc.text('LABORATORY No. -', 350, yPos, { width: 200, align: 'right' });
         }
 
         yPos += 25;
@@ -189,7 +195,7 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
         // 2. sort แบบเก่าสุดมาก่อน (Ascending)
         receivefirstList.sort((a, b) => {
-          return new Date(a.RECEIVEDDATE) - new Date(b.RECEIVEDDATE);
+          return new Date(b.RECEIVEDDATE) - new Date(a.RECEIVEDDATE);
         });
 
         // 3. ดึงวันที่เก่าสุด
@@ -319,8 +325,10 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
           // Parameters
           doc.rect(colPositions[0], yPos, colWidths[0], rowHeight).stroke();
-          if (rowData) {
+          if (rowData && currentPage.showLabNo) {
             doc.text(rowData.ITEMNAME || '', colPositions[0] + 5, yPos, { width: colWidths[0] - 10, align: 'center' });
+          } else if (rowData && !currentPage.showLabNo) {
+            doc.text(rowData.ITEMNAME + '**' || '', colPositions[0] + 5, yPos, { width: colWidths[0] - 10, align: 'center' });
           }
 
           // Unit
@@ -332,8 +340,40 @@ router.post("/WWT/CreateReport", async (req, res) => {
           // Result
           doc.rect(colPositions[2], yPos, colWidths[2], rowHeight).stroke();
           if (rowData) {
+
+            // หา approver จาก Master_User
+            const approver = masterUser.find(
+              u => u.Name === rowData.REPORTAPPROVER
+            );
+            // console.log("approver", approver);
+            let showStar = false;
+
+            if (approver) {
+              const approverBranch = approver.Branch;
+              const reportBranch = branch; // firstData[0].REQBRANCH
+
+              // เงื่อนไขเพิ่มดอกจันทร์
+              if (
+                (approverBranch === 'BANGPOO' && reportBranch === 'TPK HES LAB') ||
+                (approverBranch === 'RAYONG' && reportBranch === 'TPK BANGPOO LAB')
+              ) {
+                showStar = true;
+              }
+            }
+
+            const resultText =
+              (rowData.RESULTAPPROVE || '') + (showStar ? '*' : '');
+
             doc.font('AngsanaNew-Bold').fontSize(14);
-            doc.text(rowData.RESULTAPPROVE || '', colPositions[2] + 5, yPos, { width: colWidths[2] - 10, align: 'center' });
+            doc.text(
+              resultText,
+              colPositions[2] + 5,
+              yPos,
+              {
+                width: colWidths[2] - 10,
+                align: 'center'
+              }
+            );
             doc.font('AngsanaNew').fontSize(14);
           }
 
@@ -419,22 +459,25 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
         // 9. หัวข้อ 1-4
         doc.fontSize(12).font('AngsanaNew');
-        if (currentPage.showBottomRemark) {
-          doc.text('1. This report is according to Ministry of Industry Announcement Subject: Establishing standards for controlling wastewater drainage from factories, B.E.2560', 50, yPos, { width: 550 });
-          yPos += 12;
+        // if (currentPage.showBottomRemark) {
+        doc.text('1. This report is according to Ministry of Industry Announcement Subject: Establishing standards for controlling wastewater drainage from factories, B.E.2560', 50, yPos, { width: 550 });
+        yPos += 12;
 
-          doc.text('2. Guideline/Specification are according to Notification of the Industrial Estate Authority of Thailand No.76, B.E.2560: Criteria of wastewater', 50, yPos, { width: 550 });
-          yPos += 12;
+        doc.text('2. Guideline/Specification are according to Notification of the Industrial Estate Authority of Thailand No.76, B.E.2560: Criteria of wastewater', 50, yPos, { width: 550 });
+        yPos += 12;
 
-          doc.text('3. Analysis Method refer to Standard Methods for the Examination of Water and Wastewater, 24th Edition, 2023', 50, yPos, { width: 550 });
-          yPos += 12;
+        doc.text('3. Analysis Method refer to Standard Methods for the Examination of Water and Wastewater, 24th Edition, 2023', 50, yPos, { width: 550 });
+        yPos += 12;
 
-          doc.text('4. * Means result from Thai Parkerizing Co., Ltd.: ' + labNoRemark, 50, yPos, { width: 550 });
-          yPos += 20;
-        } else {
-          doc.text('These parameters are not registered by DIW.', 50, yPos, { width: 550 });
-          yPos += 56;
-        }
+        doc.text('4. * Means result from Thai Parkerizing Co., Ltd.: ' + labNoRemark, 50, yPos, { width: 550 });
+        yPos += 12;
+
+        doc.text('5. **Means the parameter is not registered by DIW', 50, yPos, { width: 550 });
+        yPos += 20;
+        // } else {
+        //   doc.text('These parameters are not registered by DIW.', 50, yPos, { width: 550 });
+        //   yPos += 56;
+        // }
 
 
 
@@ -492,16 +535,16 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
         yPos += 15;
 
-        const jobRegX = jobImgX + (imgW - doc.widthOfString("Registration No " + finalJobRegNo)) / 2;
-        const reportRegX = reportImgX + (imgW - doc.widthOfString("Registration No " + finalReportRegNo)) / 2;
+        const jobRegX = jobImgX + (imgW - doc.widthOfString("Registration No. " + finalJobRegNo)) / 2;
+        const reportRegX = reportImgX + (imgW - doc.widthOfString("Registration No. " + finalReportRegNo)) / 2;
 
         doc.fontSize(14);
         if (currentPage.showRegistrationNo) {
-          doc.text("Registration No " + finalJobRegNo, jobRegX, yPos);
-          doc.text("Registration No " + finalReportRegNo, reportRegX, yPos);
+          doc.text("Registration No. " + finalJobRegNo, jobRegX, yPos);
+          doc.text("Registration No. " + finalReportRegNo, reportRegX, yPos);
         } else {
-          doc.text("Registration No -", 143, yPos);
-          doc.text("Registration No -", 423, yPos);
+          doc.text("Registration No. -", 143, yPos);
+          doc.text("Registration No. -", 423, yPos);
         }
 
 
@@ -515,7 +558,7 @@ router.post("/WWT/CreateReport", async (req, res) => {
         doc.fontSize(9);
         doc.text('This report certifies only the samples that have been analyzed. Do not use this report for advertising or reference without permission. If any numbers or text are scratched, deleted, crossed out, edited or changed.', 50, yPos, { width: 500 });
         yPos += 10;
-        doc.text('This report will be considered incomplete. Do not copy only part of the report of the results of the inspection, measurement, and analysis. without written permission from the laboratory.', 50, yPos, { width: 500 });
+        doc.text('This report will be considered incomplete. Do not copy only part of the report of the results of the inspection, measurement, and analysis. without written permission from the laboratory.', 50, yPos, { align: 'center', width: 500 });
       }
     }
 
