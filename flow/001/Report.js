@@ -343,7 +343,7 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
             // หา approver จาก Master_User
             const approver = masterUser.find(
-              u => u.Name === rowData.REPORTAPPROVER
+              u => u.Name === rowData.JOBAPPROVER
             );
             // console.log("approver", approver);
             let showStar = false;
