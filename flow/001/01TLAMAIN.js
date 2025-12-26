@@ -3582,6 +3582,7 @@ router.post('/WWT/TempSaveOil', async (req, res) => {
         }
       }
 
+      pushField("Blank_No", data.Blank_No);
       pushField("Blank_Sample", data.Blank_Sample);
       pushField("Blank_W1_1", data.Blank_W1_1);
       pushField("Blank_W1_2", data.Blank_W1_2);
@@ -3591,6 +3592,8 @@ router.post('/WWT/TempSaveOil', async (req, res) => {
       pushField("Blank_W2_Diff", data.Blank_W2_Diff);
       pushField("Blank_W2_W1", data.Blank_W2_W1);
       pushField("Blank_Cal", data.Blank_Cal);
+      pushField("STD_No", data.STD_No);
+      pushField("STD_Sample", data.STD_Sample);
       pushField("STD_W1_1", data.STD_W1_1);
       pushField("STD_W1_2", data.STD_W1_2);
       pushField("STD_W1_Diff", data.STD_W1_Diff);
@@ -3599,6 +3602,8 @@ router.post('/WWT/TempSaveOil', async (req, res) => {
       pushField("STD_W2_Diff", data.STD_W2_Diff);
       pushField("STD_W2_W1", data.STD_W2_W1);
       pushField("STD_Cal", data.STD_Cal);
+      pushField("LFB1_No", data.LFB1_No);
+      pushField("LFB1_Sample", data.LFB1_Sample);
       pushField("LFB1_W1_1", data.LFB1_W1_1);
       pushField("LFB1_W1_2", data.LFB1_W1_2);
       pushField("LFB1_W1_Diff", data.LFB1_W1_Diff);
@@ -3608,6 +3613,8 @@ router.post('/WWT/TempSaveOil', async (req, res) => {
       pushField("LFB1_W2_W1", data.LFB1_W2_W1);
       pushField("LFB1_Cal", data.LFB1_Cal);
       pushField("LFB1_Recovery", data.LFB1_Recovery);
+      pushField("LFB2_No", data.LFB2_No);
+      pushField("LFB2_Sample", data.LFB2_Sample);
       pushField("LFB2_W1_1", data.LFB2_W1_1);
       pushField("LFB2_W1_2", data.LFB2_W1_2);
       pushField("LFB2_W1_Diff", data.LFB2_W1_Diff);
@@ -4925,6 +4932,7 @@ router.post('/WWT/SaveOil', async (req, res) => {
         }
       }
 
+      pushField("Blank_No", data.Blank_No);
       pushField("Blank_Sample", data.Blank_Sample);
       pushField("Blank_W1_1", data.Blank_W1_1);
       pushField("Blank_W1_2", data.Blank_W1_2);
@@ -4934,6 +4942,8 @@ router.post('/WWT/SaveOil', async (req, res) => {
       pushField("Blank_W2_Diff", data.Blank_W2_Diff);
       pushField("Blank_W2_W1", data.Blank_W2_W1);
       pushField("Blank_Cal", data.Blank_Cal);
+      pushField("STD_No", data.STD_No);
+      pushField("STD_Sample", data.STD_Sample);
       pushField("STD_W1_1", data.STD_W1_1);
       pushField("STD_W1_2", data.STD_W1_2);
       pushField("STD_W1_Diff", data.STD_W1_Diff);
@@ -4942,6 +4952,8 @@ router.post('/WWT/SaveOil', async (req, res) => {
       pushField("STD_W2_Diff", data.STD_W2_Diff);
       pushField("STD_W2_W1", data.STD_W2_W1);
       pushField("STD_Cal", data.STD_Cal);
+      pushField("LFB1_No", data.LFB1_No);
+      pushField("LFB1_Sample", data.LFB1_Sample);
       pushField("LFB1_W1_1", data.LFB1_W1_1);
       pushField("LFB1_W1_2", data.LFB1_W1_2);
       pushField("LFB1_W1_Diff", data.LFB1_W1_Diff);
@@ -4951,6 +4963,8 @@ router.post('/WWT/SaveOil', async (req, res) => {
       pushField("LFB1_W2_W1", data.LFB1_W2_W1);
       pushField("LFB1_Cal", data.LFB1_Cal);
       pushField("LFB1_Recovery", data.LFB1_Recovery);
+      pushField("LFB2_No", data.LFB2_No);
+      pushField("LFB2_Sample", data.LFB2_Sample);
       pushField("LFB2_W1_1", data.LFB2_W1_1);
       pushField("LFB2_W1_2", data.LFB2_W1_2);
       pushField("LFB2_W1_Diff", data.LFB2_W1_Diff);
