@@ -293,8 +293,8 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
         // 7. ตาราง (15 แถว + หัวตาราง)
         const tableTop = yPos;
-        const colWidths = [80, 50, 80, 80, 210];
-        const colPositions = [50, 130, 180, 260, 340];
+        const colWidths = [80, 50, 100, 80, 190];
+        const colPositions = [50, 130, 180, 280, 360];
         let rowHeight = 40;
 
         // หัวตาราง
@@ -363,17 +363,29 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
             const resultText =
               (rowData.RESULTAPPROVE || '') + (showStar ? '*' : '');
-
-            doc.font('AngsanaNew-Bold').fontSize(14);
-            doc.text(
-              resultText,
-              colPositions[2] + 5,
-              yPos,
-              {
-                width: colWidths[2] - 10,
-                align: 'center'
-              }
-            );
+            if (rowData.ITEMNAME === 'Color') {
+              doc.font('AngsanaNew-Bold').fontSize(13);
+              doc.text(
+                resultText,
+                colPositions[2] + 5,
+                yPos + 2,
+                {
+                  width: colWidths[2] - 10,
+                  align: 'center'
+                }
+              );
+            } else {
+              doc.font('AngsanaNew-Bold').fontSize(14);
+              doc.text(
+                resultText,
+                colPositions[2] + 5,
+                yPos,
+                {
+                  width: colWidths[2] - 10,
+                  align: 'center'
+                }
+              );
+            }
             doc.font('AngsanaNew').fontSize(14);
           }
 

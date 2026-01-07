@@ -3660,6 +3660,246 @@ router.post('/WWT/TempSaveOil', async (req, res) => {
   }
 });
 
+router.post('/WWT/TempSaveColor', async (req, res) => {
+  console.log("--TempSaveColor--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    let action = req.body.Action;
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("CCS1_1", data.CCS1_1);
+      pushField("CCS1_Recovery", data.CCS1_Recovery);
+      pushField("CVS1_1", data.CVS1_1);
+      pushField("CVS1_Recovery", data.CVS1_Recovery);
+      pushField("R2", data.R2);
+      pushField("Original_pH", data.Original_pH);
+      pushField("Original_1", data.Original_1);
+      pushField("Original_2", data.Original_2);
+      pushField("Original_Avg", data.Original_Avg);
+      pushField("Original_RPD", data.Original_RPD);
+      pushField("pH_1", data.pH_1);
+      pushField("pH_2", data.pH_2);
+      pushField("pH_Avg", data.pH_Avg);
+      pushField("pH_RPD", data.pH_RPD);
+      pushField("CCS2_1", data.CCS2_1);
+      pushField("CCS2_Recovery", data.CCS2_Recovery);
+      pushField("CVS2_1", data.CVS2_1);
+      pushField("CVS2_Recovery", data.CVS2_Recovery);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[Color]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      // return res.status(400).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/TempSaveEC', async (req, res) => {
+  console.log("--TempSaveEC--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("QCS_EC_1", data.QCS_EC_1);
+      pushField("QCS_EC_2", data.QCS_EC_2);
+      pushField("QCS_Avg", data.QCS_Avg);
+      pushField("QCS_RPD", data.QCS_RPD);
+      pushField("EC_1", data.EC_1);
+      pushField("EC_2", data.EC_2);
+      pushField("Avg", data.Avg);
+      pushField("RPD", data.RPD);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[EC]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      // return res.status(400).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/TempSaveTEMP', async (req, res) => {
+  console.log("--TempSaveTEMP--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("TEMP_1", data.TEMP_1);
+      pushField("TEMP_2", data.TEMP_2);
+      pushField("X", data.X);
+      pushField("RPD", data.RPD);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[Temp]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      // return res.status(400).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/TempSaveIC', async (req, res) => {
+  console.log("--TempSaveIC--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    let action = req.body.Action;
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("QCS_DilutionTime", data.QCS_DilutionTime);
+      pushField("QCS_Cl_1", data.QCS_Cl_1);
+      pushField("QCS_Cl_2", data.QCS_Cl_2);
+      pushField("QCS_Cl_Cal", data.QCS_Cl_Cal);
+      pushField("QCS_RPD", data.QCS_RPD);
+      pushField("QCS_Recovery", data.QCS_Recovery);
+      pushField("R2", data.R2);
+      pushField("DilutionTime", data.DilutionTime);
+      pushField("Cl_1", data.Cl_1);
+      pushField("Cl_2", data.Cl_2);
+      pushField("Cl_Cal", data.Cl_Cal);
+      pushField("RPD", data.RPD);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[IC]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      // return res.status(400).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
 router.post('/WWT/SaveBOD', async (req, res) => {
   console.log("--SaveBOD--");
 
@@ -5035,6 +5275,416 @@ router.post('/WWT/SaveOil', async (req, res) => {
         updateQuery += query + '\n';
       }
       console.log(updateQuery);
+      let updateRequest = await mssql.qurey(updateQuery);
+      if (updateRequest["rowsAffected"][0] > 0) {
+        console.log("Update Success");
+        return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      } else {
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+      }
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/SaveColor', async (req, res) => {
+  console.log("--SaveColor--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("CCS1_1", data.CCS1_1);
+      pushField("CCS1_Recovery", data.CCS1_Recovery);
+      pushField("CVS1_1", data.CVS1_1);
+      pushField("CVS1_Recovery", data.CVS1_Recovery);
+      pushField("R2", data.R2);
+      pushField("Original_pH", data.Original_pH);
+      pushField("Original_1", data.Original_1);
+      pushField("Original_2", data.Original_2);
+      pushField("Original_Avg", data.Original_Avg);
+      pushField("Original_RPD", data.Original_RPD);
+      pushField("pH_1", data.pH_1);
+      pushField("pH_2", data.pH_2);
+      pushField("pH_Avg", data.pH_Avg);
+      pushField("pH_RPD", data.pH_RPD);
+      pushField("CCS2_1", data.CCS2_1);
+      pushField("CCS2_Recovery", data.CCS2_Recovery);
+      pushField("CVS2_1", data.CVS2_1);
+      pushField("CVS2_Recovery", data.CVS2_Recovery);
+      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("AnalysisDate", now);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[Color]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      let updateQuery = '';
+      let itemStatusValue = '';
+
+      for (const data of dataRow) {
+        let fields = [];
+        function pushField(name, value) {
+          if (value !== '') {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = '${escapedValue}'`);
+          } else {
+            fields.push(`[${name}] = NULL`);
+          }
+        }
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'FINISH ITEM';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'FINISH RECHECK';
+        } else {
+          itemStatusValue = 'FINISH ITEM';
+        }
+        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("AnalysisDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", 'FINISH');
+
+        let query = `
+          UPDATE [WWT].[dbo].[Request]
+          SET ${fields.join(',\n')}
+          WHERE ID = '${data.ID}';
+          `;
+        updateQuery += query + '\n';
+      }
+      // console.log(insertQuery);
+      let updateRequest = await mssql.qurey(updateQuery);
+      if (updateRequest["rowsAffected"][0] > 0) {
+        console.log("Update Success");
+        return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      } else {
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+      }
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/SaveEC', async (req, res) => {
+  console.log("--SaveEC--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("QCS_EC_1", data.QCS_EC_1);
+      pushField("QCS_EC_2", data.QCS_EC_2);
+      pushField("QCS_Avg", data.QCS_Avg);
+      pushField("QCS_RPD", data.QCS_RPD);
+      pushField("EC_1", data.EC_1);
+      pushField("EC_2", data.EC_2);
+      pushField("Avg", data.Avg);
+      pushField("RPD", data.RPD);
+      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("AnalysisDate", now);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[EC]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      let updateQuery = '';
+      let itemStatusValue = '';
+
+      for (const data of dataRow) {
+        let fields = [];
+        function pushField(name, value) {
+          if (value !== '') {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = '${escapedValue}'`);
+          } else {
+            fields.push(`[${name}] = NULL`);
+          }
+        }
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'FINISH ITEM';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'FINISH RECHECK';
+        } else {
+          itemStatusValue = 'FINISH ITEM';
+        }
+        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("AnalysisDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", 'FINISH');
+
+        let query = `
+          UPDATE [WWT].[dbo].[Request]
+          SET ${fields.join(',\n')}
+          WHERE ID = '${data.ID}';
+          `;
+        updateQuery += query + '\n';
+      }
+      // console.log(insertQuery);
+      let updateRequest = await mssql.qurey(updateQuery);
+      if (updateRequest["rowsAffected"][0] > 0) {
+        console.log("Update Success");
+        return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      } else {
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+      }
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/SaveTEMP', async (req, res) => {
+  console.log("--SaveTEMP--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("TEMP_1", data.TEMP_1);
+      pushField("TEMP_2", data.TEMP_2);
+      pushField("X", data.X);
+      pushField("RPD", data.RPD);
+      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("AnalysisDate", now);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[Temp]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      let updateQuery = '';
+      let itemStatusValue = '';
+
+      for (const data of dataRow) {
+        let fields = [];
+        function pushField(name, value) {
+          if (value !== '') {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = '${escapedValue}'`);
+          } else {
+            fields.push(`[${name}] = NULL`);
+          }
+        }
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'FINISH ITEM';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'FINISH RECHECK';
+        } else {
+          itemStatusValue = 'FINISH ITEM';
+        }
+        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("AnalysisDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", 'FINISH');
+
+        let query = `
+          UPDATE [WWT].[dbo].[Request]
+          SET ${fields.join(',\n')}
+          WHERE ID = '${data.ID}';
+          `;
+        updateQuery += query + '\n';
+      }
+      // console.log(insertQuery);
+      let updateRequest = await mssql.qurey(updateQuery);
+      if (updateRequest["rowsAffected"][0] > 0) {
+        console.log("Update Success");
+        return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+      } else {
+        console.log("Update Failed");
+        return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+      }
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/SaveIC', async (req, res) => {
+  console.log("--SaveIC--");
+
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      pushField("QCS_DilutionTime", data.QCS_DilutionTime);
+      pushField("QCS_Cl_1", data.QCS_Cl_1);
+      pushField("QCS_Cl_2", data.QCS_Cl_2);
+      pushField("QCS_Cl_Cal", data.QCS_Cl_Cal);
+      pushField("QCS_RPD", data.QCS_RPD);
+      pushField("QCS_Recovery", data.QCS_Recovery);
+      pushField("R2", data.R2);
+      pushField("DilutionTime", data.DilutionTime);
+      pushField("Cl_1", data.Cl_1);
+      pushField("Cl_2", data.Cl_2);
+      pushField("Cl_Cal", data.Cl_Cal);
+      pushField("RPD", data.RPD);
+      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("AnalysisDate", now);
+      pushField("Remark_Job", data.REMARKJOB);
+
+      let query = `
+      UPDATE [WWT].[dbo].[IC]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+      `;
+      allQueries += query + '\n';
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    if (db["rowsAffected"][0] > 0) {
+      let updateQuery = '';
+      let itemStatusValue = '';
+
+      for (const data of dataRow) {
+        let fields = [];
+        function pushField(name, value) {
+          if (value !== '') {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = '${escapedValue}'`);
+          } else {
+            fields.push(`[${name}] = NULL`);
+          }
+        }
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'LIST ITEM') {
+          itemStatusValue = 'FINISH ITEM';
+        } else if (itemStatus === 'LIST RECHECK') {
+          itemStatusValue = 'FINISH RECHECK';
+        } else {
+          itemStatusValue = 'FINISH ITEM';
+        }
+        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("AnalysisDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", 'FINISH');
+
+        let query = `
+          UPDATE [WWT].[dbo].[Request]
+          SET ${fields.join(',\n')}
+          WHERE ID = '${data.ID}';
+          `;
+        updateQuery += query + '\n';
+      }
+      // console.log(insertQuery);
       let updateRequest = await mssql.qurey(updateQuery);
       if (updateRequest["rowsAffected"][0] > 0) {
         console.log("Update Success");
@@ -7139,6 +7789,801 @@ router.post('/WWT/approveRejectOil', async (req, res) => {
   }
 });
 
+router.post('/WWT/approveRejectColor', async (req, res) => {
+  console.log("--approveRejectColor--");
+  // console.log(req.body);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    let itemStatusValue = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      const originalValue =
+        data.Original_Avg && data.Original_Avg !== ''
+          ? data.Original_Avg
+          : data.Original_1;
+
+      const pHValue =
+        data.pH_Avg && data.pH_Avg !== ''
+          ? data.pH_Avg
+          : data.pH_1;
+
+      if (data.DECISIONUSER !== '') {
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Status", 'APPROVE');
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query1 = `
+        UPDATE [WWT].[dbo].[Color]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query1 + '\n';
+
+        fields = [];
+        let itemStatus = data.ItemStatus;
+        pushField("JobApprover", req.body.UserAnalysis);
+        pushField("JobApproveDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", 'APPROVE ITEM');
+        pushField("JobStatus", 'COMPLETE');
+
+        if (originalValue !== '' && pHValue !== '') {
+          const resultText = `${originalValue} (pH ${data.Original_pH}), ${pHValue} (pH 7)`;
+          if (itemStatus === 'FINISH ITEM') {
+            pushField("Result_1", resultText);
+          } else if (itemStatus === 'FINISH RECHECK') {
+            pushField("Result_2", resultText);
+          }
+          pushField("ResultApprove", resultText);
+        }
+
+        let query2 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query2 + '\n';
+
+      } else if (data.REJECT !== '') {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'FINISH ITEM') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else if (itemStatus === 'FINISH RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+
+        if (originalValue !== '' && pHValue !== '') {
+          const resultText = `${originalValue} (pH ${data.Original_pH}), ${pHValue} (pH 7)`;
+          if (itemStatus === 'FINISH ITEM') {
+            pushField("Result_1", resultText);
+          } else if (itemStatus === 'FINISH RECHECK') {
+            pushField("Result_2", resultText);
+          }
+        }
+
+        let query3 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query3 + '\n';
+
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query4 = `
+        UPDATE [WWT].[dbo].[Color]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query4 + '\n';
+      }
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/approveRejectEC', async (req, res) => {
+  console.log("--approveRejectEC--");
+  // console.log(req.body);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    let itemStatusValue = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      const result =
+        data.Avg && data.Avg !== ''
+          ? data.Avg
+          : data.EC_1;
+
+      if (data.DECISIONUSER !== '') {
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Status", 'APPROVE');
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query1 = `
+        UPDATE [WWT].[dbo].[EC]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query1 + '\n';
+
+        fields = [];
+        let itemStatus = data.ItemStatus;
+        pushField("JobApprover", req.body.UserAnalysis);
+        pushField("JobApproveDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", 'APPROVE ITEM');
+        pushField("JobStatus", 'COMPLETE');
+
+        if (result !== '') {
+          if (itemStatus === 'FINISH ITEM') {
+            pushField("Result_1", result);
+          } else if (itemStatus === 'FINISH RECHECK') {
+            pushField("Result_2", result);
+          }
+          pushField("ResultApprove", result);
+        }
+
+        let query2 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query2 + '\n';
+
+      } else if (data.REJECT !== '') {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'FINISH ITEM') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else if (itemStatus === 'FINISH RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+        if (result !== '') {
+          if (itemStatus === 'FINISH ITEM') {
+            pushField("Result_1", result);
+          } else if (itemStatus === 'FINISH RECHECK') {
+            pushField("Result_2", result);
+          }
+        }
+        let query3 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query3 + '\n';
+
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query4 = `
+        UPDATE [WWT].[dbo].[EC]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query4 + '\n';
+      }
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/approveRejectTEMP', async (req, res) => {
+  console.log("--approveRejectTEMP--");
+  // console.log(req.body);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    let itemStatusValue = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+
+      const result =
+        data.X && data.X !== ''
+          ? data.X
+          : data.TEMP_1;
+
+      if (data.DECISIONUSER !== '') {
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Status", 'APPROVE');
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query1 = `
+        UPDATE [WWT].[dbo].[Temp]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query1 + '\n';
+
+        fields = [];
+        let itemStatus = data.ItemStatus;
+        pushField("JobApprover", req.body.UserAnalysis);
+        pushField("JobApproveDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", 'APPROVE ITEM');
+        pushField("JobStatus", 'COMPLETE');
+
+        if (result !== '') {
+          if (itemStatus === 'FINISH ITEM') {
+            pushField("Result_1", result);
+          } else if (itemStatus === 'FINISH RECHECK') {
+            pushField("Result_2", result);
+          }
+          pushField("ResultApprove", result);
+        }
+
+        let query2 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query2 + '\n';
+
+      } else if (data.REJECT !== '') {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'FINISH ITEM') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else if (itemStatus === 'FINISH RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+        if (result !== '') {
+          if (itemStatus === 'FINISH ITEM') {
+            pushField("Result_1", result);
+          } else if (itemStatus === 'FINISH RECHECK') {
+            pushField("Result_2", result);
+          }
+        }
+        let query3 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query3 + '\n';
+
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query4 = `
+        UPDATE [WWT].[dbo].[Temp]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query4 + '\n';
+      }
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/approveRejectIC', async (req, res) => {
+  console.log("--approveRejectIC--");
+  // console.log(req.body);
+  try {
+    let dataRow = JSON.parse(req.body.dataRow);
+    const now = ISOToLocal(new Date());
+    let allQueries = '';
+    let itemStatusValue = '';
+    for (const data of dataRow) {
+      let fields = [];
+
+      function pushField(name, value) {
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
+        } else {
+          fields.push(`[${name}] = NULL`);
+        }
+      }
+      if (data.DECISIONUSER !== '') {
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Status", 'APPROVE');
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query1 = `
+        UPDATE [WWT].[dbo].[IC]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query1 + '\n';
+
+        fields = [];
+        let itemStatus = data.ItemStatus;
+        pushField("JobApprover", req.body.UserAnalysis);
+        pushField("JobApproveDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+        pushField("ItemStatus", 'APPROVE ITEM');
+        pushField("JobStatus", 'COMPLETE');
+        if (itemStatus === 'FINISH ITEM') {
+          pushField("Result_1", data.Cl_Cal);
+        } else if (itemStatus === 'FINISH RECHECK') {
+          pushField("Result_2", data.Cl_Cal);
+        }
+        pushField("ResultApprove", data.Cl_Cal);
+
+        let query2 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query2 + '\n';
+
+      } else if (data.REJECT !== '') {
+        let itemStatus = data.ItemStatus;
+        if (itemStatus === 'FINISH ITEM') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else if (itemStatus === 'FINISH RECHECK') {
+          itemStatusValue = 'RECHECK ITEM';
+        } else {
+          itemStatusValue = 'RECEIVE SAMPLE';
+        }
+        pushField("JobCode", '');
+        pushField("UserListJob", '');
+        pushField("ListJobDate", '');
+        pushField("UserAnalysis", '');
+        pushField("AnalysisDate", '');
+        pushField("ItemStatus", itemStatusValue);
+        pushField("JobStatus", '');
+        if (itemStatus === 'FINISH ITEM') {
+          pushField("Result_1", data.Cl_Cal);
+        } else if (itemStatus === 'FINISH RECHECK') {
+          pushField("Result_2", data.Cl_Cal);
+        }
+
+        let query3 = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}';
+        `;
+        allQueries += query3 + '\n';
+
+        fields = [];
+        pushField("Status", 'REJECT');
+        pushField("DecisionUser", req.body.UserAnalysis);
+        pushField("DecisionDate", now);
+        pushField("Remark_Job", data.REMARKJOB);
+
+        let query4 = `
+        UPDATE [WWT].[dbo].[IC]
+        SET ${fields.join(',\n')}
+        WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
+        `;
+        allQueries += query4 + '\n';
+      }
+    }
+    // console.log(allQueries);
+    let db = await mssql.qurey(allQueries);
+    // console.log(db);
+    for (const data of dataRow) {
+      const bottleCode = data.BOTTLECODE;
+
+      // 1) ดึง SampleCode และ ReqNo จาก BOTTLECODE
+      const getInfoQuery = `
+      SELECT SampleCode, ReqNo
+      FROM [WWT].[dbo].[Request]
+      WHERE BottleCode = '${bottleCode}';
+      `;
+
+      const info = await mssql.qurey(getInfoQuery);
+
+      if (info.recordset.length === 0) {
+        // console.log("ไม่พบข้อมูลจาก BottleCode:", bottleCode);
+        continue; // ข้ามไปแถวถัดไป
+      }
+
+      const sampleCode = info.recordset[0].SampleCode;
+      const ReqNo = info.recordset[0].ReqNo;
+
+      console.log("Found SampleCode:", sampleCode, "ReqNo:", ReqNo);
+
+      // ---------------------------------------------------
+      // 2) เช็คว่า sampleCode ทั้งหมด APPROVE ITEM หรือยัง
+      // ---------------------------------------------------
+
+      const checkSampleCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+      const result = await mssql.qurey(checkSampleCodeQuery);
+      const total = result.recordset[0].Total;
+      const sent = result.recordset[0].Sent;
+
+      if (total > 0 && total === sent) {
+        const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'WAIT REPORT'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+        await mssql.qurey(updateSampleStatusQuery);
+        // console.log("Updated SampleStatus → WAIT REPORT");
+      }
+
+      // ---------------------------------------------------
+      // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+      // ---------------------------------------------------
+
+      const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+      const reqResult = await mssql.qurey(checkReqNoQuery);
+      const totalReq = reqResult.recordset[0].Total;
+      const sentReq = reqResult.recordset[0].Sent;
+
+      if (totalReq > 0 && totalReq === sentReq) {
+        const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'WAIT REPORT'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+        await mssql.qurey(updateReqStatusQuery);
+        // console.log("Updated ReqStatus → WAIT REPORT");
+      }
+    }
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      console.log("Update Failed");
+      return res.status(400).json('อัปเดทข้อมูลไม่สำเร็จ');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
 router.post('/WWT/historyGraph', async (req, res) => {
   //-------------------------------------
   console.log("--historyGraph--");
@@ -7400,13 +8845,13 @@ router.post('/WWT/approveRejectReport', async (req, res) => {
   try {
     let dataRow = JSON.parse(req.body.dataRow);
     let ReportApprover = req.body.ReportApprover;
-    console.log(dataRow);
+    // console.log(dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
     for (const data of dataRow) {
       let fields = [];
       let INSNAME = data.INSNAME;
-      console.log(INSNAME);
+      // console.log(INSNAME);
 
       function pushField(name, value) {
         if (value !== '' && value !== null && value !== undefined) {
