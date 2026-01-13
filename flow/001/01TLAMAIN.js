@@ -1915,10 +1915,17 @@ router.post('/WWT/listNewJob', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     let insName = req.body.Instrument;
     let userListJob = req.body.UserListJob;
+    let Branch = req.body.Branch;
     const now = ISOToLocal(new Date());
     // console.log(dataRow);
-    const reqBranch = dataRow[0].REQBRANCH;
+    const reqBranch = Branch;
     const baseJobCode = await generateBaseJobCode(reqBranch, insName);
+    let reqCode = '';
+    if (Branch === 'BANGPOO') {
+      reqCode = 'ACB';
+    } else if (Branch === 'RAYONG') {
+      reqCode = 'ACR';
+    }
     let allQueries = '';
     let itemStatusValue = '';
 
@@ -1944,6 +1951,7 @@ router.post('/WWT/listNewJob', async (req, res) => {
       }
 
       pushField("JobCode", baseJobCode);
+      pushField("ReqCode", reqCode);
       pushField("UserListJob", userListJob);
       pushField("ListJobDate", now);
       pushField("ItemStatus", itemStatusValue);
@@ -3694,6 +3702,7 @@ router.post('/WWT/TempSaveColor', async (req, res) => {
       pushField("Original_2", data.Original_2);
       pushField("Original_Avg", data.Original_Avg);
       pushField("Original_RPD", data.Original_RPD);
+      pushField("pH_pH", data.pH_pH);
       pushField("pH_1", data.pH_1);
       pushField("pH_2", data.pH_2);
       pushField("pH_Avg", data.pH_Avg);
@@ -3907,6 +3916,12 @@ router.post('/WWT/SaveBOD', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -3991,7 +4006,7 @@ router.post('/WWT/SaveBOD', async (req, res) => {
       pushField("Calculate_4", data.CALCULATE_4);
       pushField("Result_4", data.RESULT_4);
       pushField("RPD_4", data.RPD_4);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -4027,7 +4042,7 @@ router.post('/WWT/SaveBOD', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -4067,6 +4082,12 @@ router.post('/WWT/SavePH', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -4098,7 +4119,7 @@ router.post('/WWT/SavePH', async (req, res) => {
       pushField("Diff_R1", data.Diff_R1);
       pushField("Avg_R1", data.Avg_R1);
       pushField("RPD", data.RPD);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -4134,7 +4155,7 @@ router.post('/WWT/SavePH', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -4174,6 +4195,12 @@ router.post('/WWT/SaveTF', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -4201,7 +4228,7 @@ router.post('/WWT/SaveTF', async (req, res) => {
       pushField("F_2", data.F_2);
       pushField("F_Xbar", data.F_Xbar);
       pushField("RPD", data.RPD);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -4237,7 +4264,7 @@ router.post('/WWT/SaveTF', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -4277,6 +4304,12 @@ router.post('/WWT/SaveTDS', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -4335,7 +4368,7 @@ router.post('/WWT/SaveTDS', async (req, res) => {
       pushField("Cal_2", data.Cal_2);
       pushField("Avg", data.Avg);
       pushField("RPD", data.RPD);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -4370,7 +4403,7 @@ router.post('/WWT/SaveTDS', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -4410,6 +4443,12 @@ router.post('/WWT/SaveTSS', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -4468,7 +4507,7 @@ router.post('/WWT/SaveTSS', async (req, res) => {
       pushField("Cal_2", data.Cal_2);
       pushField("Avg", data.Avg);
       pushField("RPD", data.RPD);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -4503,7 +4542,7 @@ router.post('/WWT/SaveTSS', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -4543,6 +4582,12 @@ router.post('/WWT/SaveCOD', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -4593,7 +4638,7 @@ router.post('/WWT/SaveCOD', async (req, res) => {
       pushField("Cal_2", data.Cal_2);
       pushField("Avg", data.Avg);
       pushField("RPD", data.RPD);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -4628,7 +4673,7 @@ router.post('/WWT/SaveCOD', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -4668,6 +4713,12 @@ router.post('/WWT/SaveICP', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -5081,7 +5132,7 @@ router.post('/WWT/SaveICP', async (req, res) => {
       pushField("Cd_Avg", data.Cd_Avg);
       pushField("Cd_RPD", data.Cd_RPD);
       pushField("Select_L", data.Select_L);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -5116,7 +5167,7 @@ router.post('/WWT/SaveICP', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -5156,6 +5207,12 @@ router.post('/WWT/SaveOil', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -5226,7 +5283,7 @@ router.post('/WWT/SaveOil', async (req, res) => {
       pushField("W2_Diff", data.W2_Diff);
       pushField("W2_W1", data.W2_W1);
       pushField("Cal", data.Cal);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -5261,7 +5318,7 @@ router.post('/WWT/SaveOil', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -5301,6 +5358,12 @@ router.post('/WWT/SaveColor', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -5327,6 +5390,7 @@ router.post('/WWT/SaveColor', async (req, res) => {
       pushField("Original_2", data.Original_2);
       pushField("Original_Avg", data.Original_Avg);
       pushField("Original_RPD", data.Original_RPD);
+      pushField("pH_pH", data.pH_pH);
       pushField("pH_1", data.pH_1);
       pushField("pH_2", data.pH_2);
       pushField("pH_Avg", data.pH_Avg);
@@ -5335,7 +5399,7 @@ router.post('/WWT/SaveColor', async (req, res) => {
       pushField("CCS2_Recovery", data.CCS2_Recovery);
       pushField("CVS2_1", data.CVS2_1);
       pushField("CVS2_Recovery", data.CVS2_Recovery);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -5371,7 +5435,7 @@ router.post('/WWT/SaveColor', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -5411,6 +5475,12 @@ router.post('/WWT/SaveEC', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -5435,7 +5505,7 @@ router.post('/WWT/SaveEC', async (req, res) => {
       pushField("EC_2", data.EC_2);
       pushField("Avg", data.Avg);
       pushField("RPD", data.RPD);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -5471,7 +5541,7 @@ router.post('/WWT/SaveEC', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -5511,6 +5581,12 @@ router.post('/WWT/SaveTEMP', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -5531,7 +5607,7 @@ router.post('/WWT/SaveTEMP', async (req, res) => {
       pushField("TEMP_2", data.TEMP_2);
       pushField("X", data.X);
       pushField("RPD", data.RPD);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -5567,7 +5643,7 @@ router.post('/WWT/SaveTEMP', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -5607,6 +5683,12 @@ router.post('/WWT/SaveIC', async (req, res) => {
     let dataRow = JSON.parse(req.body.dataRow);
     const now = ISOToLocal(new Date());
     let allQueries = '';
+
+    let analysisUser = await getValidAnalysisUser(
+      req.body.UserAnalysis,
+      dataRow[0].REQBRANCH
+    );
+
     for (const data of dataRow) {
       let fields = [];
 
@@ -5635,7 +5717,7 @@ router.post('/WWT/SaveIC', async (req, res) => {
       pushField("Cl_2", data.Cl_2);
       pushField("Cl_Cal", data.Cl_Cal);
       pushField("RPD", data.RPD);
-      pushField("UserAnalysis", req.body.UserAnalysis);
+      pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
 
@@ -5671,7 +5753,7 @@ router.post('/WWT/SaveIC', async (req, res) => {
         } else {
           itemStatusValue = 'FINISH ITEM';
         }
-        pushField("UserAnalysis", req.body.UserAnalysis);
+        pushField("UserAnalysis", analysisUser);
         pushField("AnalysisDate", now);
         pushField("Remark_Job", data.REMARKJOB);
         pushField("ItemStatus", itemStatusValue);
@@ -7845,7 +7927,7 @@ router.post('/WWT/approveRejectColor', async (req, res) => {
         pushField("JobStatus", 'COMPLETE');
 
         if (originalValue !== '' && pHValue !== '') {
-          const resultText = `${originalValue} (pH ${data.Original_pH}), ${pHValue} (pH 7)`;
+          const resultText = `${originalValue} (pH ${data.Original_pH}), ${pHValue} (pH ${data.pH_pH})`;
           if (itemStatus === 'FINISH ITEM') {
             pushField("Result_1", resultText);
           } else if (itemStatus === 'FINISH RECHECK') {
@@ -7879,7 +7961,7 @@ router.post('/WWT/approveRejectColor', async (req, res) => {
         pushField("JobStatus", '');
 
         if (originalValue !== '' && pHValue !== '') {
-          const resultText = `${originalValue} (pH ${data.Original_pH}), ${pHValue} (pH 7)`;
+          const resultText = `${originalValue} (pH ${data.Original_pH}), ${pHValue} (pH ${data.pH_pH})`;
           if (itemStatus === 'FINISH ITEM') {
             pushField("Result_1", resultText);
           } else if (itemStatus === 'FINISH RECHECK') {
@@ -8758,18 +8840,18 @@ router.post('/WWT/getOCRICPValue', async (req, res) => {
 router.post('/WWT/JobWaitApprove', async (req, res) => {
   console.log("--JobWaitApprove--");
   let output = [];
-  let ReqBranch = '';
+  let ReqCode = '';
   if (req.body.Branch == 'RAYONG') {
-    ReqBranch = 'TPK HES LAB'
+    ReqCode = 'ACR'
   } else (
-    ReqBranch = 'TPK BANGPOO LAB'
+    ReqCode = 'ACB'
   );
   let query = `
   WITH R AS (
     SELECT  *,
             ROW_NUMBER() OVER (PARTITION BY JobCode ORDER BY AnalysisDue) AS rn
     FROM [WWT].[dbo].[Request]
-    WHERE JobStatus = 'FINISH' AND ReqBranch = '${ReqBranch}'
+    WHERE JobStatus = 'FINISH' AND ReqCode = '${ReqCode}'
   )
   SELECT TOP 10000 *
   FROM R
@@ -9009,7 +9091,7 @@ async function generateBaseJobCode(reqBranch, instrument) {
   const currentYear = new Date().getFullYear().toString().slice(-2);
   let prefix = 'ACB';
 
-  if (reqBranch === 'TPK HES LAB') prefix = 'ACR';
+  if (reqBranch === 'RAYONG') prefix = 'ACR';
 
   const result = await mssql.qurey(`
     SELECT TOP 1 JobCode FROM [WWT].[dbo].[${instrument}]
@@ -9108,5 +9190,46 @@ async function loadHolidays() {
     holidays = new Set();
   }
 }
+
+async function getValidAnalysisUser(userName, reqBranch) {
+  // แปลง Branch
+  let branch = reqBranch;
+  if (branch === 'TPK HES LAB') branch = 'RAYONG';
+  if (branch === 'TPK BANGPOO LAB') branch = 'BANGPOO';
+
+  // 1. เช็ค user ที่ส่งมาว่ามี RegistrationNo หรือไม่
+  let checkUserQuery = `
+    SELECT Name, RegistrationNo
+    FROM [SAR].[dbo].[Master_User]
+    WHERE Name = N'${userName.replace(/'/g, "''")}'
+  `;
+  let checkUser = await mssql.qurey(checkUserQuery);
+
+  if (
+    checkUser.recordset.length > 0 &&
+    checkUser.recordset[0].RegistrationNo &&
+    checkUser.recordset[0].RegistrationNo !== ''
+  ) {
+    // ใช้ user เดิมได้
+    return userName;
+  }
+
+  // 2. หา Default user ตาม Branch
+  let defaultUserQuery = `
+    SELECT TOP 1 Name
+    FROM [SAR].[dbo].[Master_User]
+    WHERE Branch = N'${branch}'
+      AND DefaultAnalysisUser = 'Default'
+  `;
+  let defaultUser = await mssql.qurey(defaultUserQuery);
+
+  if (defaultUser.recordset.length > 0) {
+    return defaultUser.recordset[0].Name;
+  }
+
+  // 3. fallback (กรณีหาไม่ได้จริงๆ)
+  return userName;
+}
+
 
 module.exports = router;

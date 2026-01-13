@@ -104,6 +104,9 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
     let isFirstPage = true;
 
+    // แทนที่ส่วนของ loop ที่สร้างหน้า (จากบรรทัดที่เริ่มต้น pages = [...])
+    // ด้วยโค้ดนี้:
+
     for (const reportKey of reportKeys) {
       const allReportData = dataRow[reportKey];
 
@@ -121,458 +124,460 @@ router.post("/WWT/CreateReport", async (req, res) => {
         const currentPage = pages[pageIndex];
         const reportData = currentPage.data;
 
-        if (!isFirstPage) {
-          doc.addPage();
-        }
-        isFirstPage = false;
+        // คำนวณจำนวนหน้าที่ต้องการ (15 รายการต่อหน้า)
+        const itemsPerPage = 15;
+        const totalPages = Math.ceil(reportData.length / itemsPerPage);
 
-        // ตำแหน่งเริ่มต้น
-        let yPos = 20;
+        // Loop สร้างหน้าตามจำนวนข้อมูล
+        for (let subPageIndex = 0; subPageIndex < Math.max(1, totalPages); subPageIndex++) {
+          if (!isFirstPage) {
+            doc.addPage();
+          }
+          isFirstPage = false;
 
-        // 1. Logo และชื่อบริษัท (ด้านซ้าย)
-        doc.image('assets/logo/logoTPK.jpg', 50, yPos, { width: 50 });
+          // ดึงข้อมูลสำหรับหน้านี้
+          const startIdx = subPageIndex * itemsPerPage;
+          const endIdx = Math.min(startIdx + itemsPerPage, reportData.length);
+          const currentPageData = reportData.slice(startIdx, endIdx);
 
-        doc.fontSize(20).font('AngsanaNew-Bold');
-        doc.text('THAI PARKERIZING CO., LTD.', 100, yPos);
-        yPos += 5;
+          // ตำแหน่งเริ่มต้น
+          let yPos = 20;
 
-        // 2. LABORATORY No. (ด้านขวา)
-        doc.fontSize(12).font('AngsanaNew-Bold');
-        if (currentPage.showLabNo) {
-          doc.text(labNo, 350, yPos, { width: 200, align: 'right' });
-        } else {
-          doc.text('LABORATORY No. -', 350, yPos, { width: 200, align: 'right' });
-        }
+          // 1. Logo และชื่อบริษัท (ด้านซ้าย)
+          doc.image('assets/logo/logoTPK.jpg', 50, yPos, { width: 50 });
 
-        yPos += 25;
+          doc.fontSize(20).font('AngsanaNew-Bold');
+          doc.text('THAI PARKERIZING CO., LTD.', 100, yPos);
+          yPos += 5;
 
-        // 3. ที่อยู่
-        doc.text(companyAddressFront, 50, yPos);
-        yPos += 15;
-        doc.text(companyAddressBack, 50, yPos);
-        yPos += 15;
-
-        // 4. เบอร์โทร
-        doc.fontSize(12).font('AngsanaNew');
-        doc.text(tel, 50, yPos);
-        yPos += 25;
-
-        // 5. หัวข้อ TESTING REPORT ในกล่อง
-        doc.rect(200, yPos, 200, 30).stroke();
-        doc.fontSize(20).font('AngsanaNew-Bold');
-        doc.text('TESTING REPORT', 200, yPos + 2, { width: 200, align: 'center' });
-
-        yPos += 45;
-
-        // 6. ข้อมูล Customer, Report No, etc.
-        doc.fontSize(14).font('AngsanaNew');
-
-        const customerName = allReportData[0]?.CUSTNAME || '';
-        const reportNo = reportKey || '';
-        const raw = allReportData[0]?.SAMPDATE || '';
-        const samplingDate = raw ? raw.split(" ")[0].replace(/-/g, "/") : '';
-
-        // 1. Filter เฉพาะ record ที่มี RECEIVEDDATE
-        const receivedList = allReportData
-          .filter(x => x.RECEIVEDDATE && x.RECEIVEDDATE.trim() !== "");
-
-        // 2. sort เอาตัวที่วันที่ใหม่ที่สุด (Descending)
-        receivedList.sort((a, b) => {
-          return new Date(b.RECEIVEDDATE) - new Date(a.RECEIVEDDATE);
-        });
-
-        // 3. ดึงวันที่ล่าสุด
-        const latestReceived = receivedList[0]?.RECEIVEDDATE || "";
-
-        // 4. ตัดเวลาออก
-        const receivingDate = latestReceived.split(" ")[0].replace(/-/g, "/");
-
-        const sourceOfSample = allReportData[0]?.SAMPNAME || '';
-
-        // 1. Filter เฉพาะที่มี RECEIVEDDATE
-        const receivefirstList = allReportData
-          .filter(x => x.RECEIVEDDATE && x.RECEIVEDDATE.trim() !== "");
-
-        // 2. sort แบบเก่าสุดมาก่อน (Ascending)
-        receivefirstList.sort((a, b) => {
-          return new Date(b.RECEIVEDDATE) - new Date(a.RECEIVEDDATE);
-        });
-
-        // 3. ดึงวันที่เก่าสุด
-        const firstReceiveDate = receivefirstList[0]?.RECEIVEDDATE || "";
-
-        // 4. ตัดเวลาออก
-        const firstReceive = firstReceiveDate.split(" ")[0].replace(/-/g, "/");
-
-        // 1. Filter เฉพาะ record ที่มี JOBAPPROVEDATE
-        const jobApproveDateList = allReportData
-          .filter(x => x.JOBAPPROVEDATE && x.JOBAPPROVEDATE.trim() !== "");
-
-        // 2. sort เอาตัวที่วันที่ใหม่ที่สุด (Descending)
-        jobApproveDateList.sort((a, b) => {
-          return new Date(b.JOBAPPROVEDATE) - new Date(a.JOBAPPROVEDATE);
-        });
-
-        // 3. ดึงวันที่ล่าสุด
-        const latestjobApproveDate = jobApproveDateList[0]?.JOBAPPROVEDATE || "";
-
-        // 4. ตัดเวลาออก
-        const jobApproveDate = latestjobApproveDate.split(" ")[0].replace(/-/g, "/");
-
-        let samplingBy = allReportData[0]?.SAMPPERSON || '';
-
-        // 1. Filter เฉพาะ record ที่มี REPORTAPPROVEDATE
-        const reportDateList = allReportData
-          .filter(x => x.REPORTAPPROVEDATE && x.REPORTAPPROVEDATE.trim() !== "");
-
-        // 2. sort เอาตัวที่วันที่ใหม่ที่สุด (Descending)
-        reportDateList.sort((a, b) => {
-          return new Date(b.REPORTAPPROVEDATE) - new Date(a.REPORTAPPROVEDATE);
-        });
-
-        // 3. ดึงวันที่ล่าสุด
-        const latestReportDate = reportDateList[0]?.REPORTAPPROVEDATE || "";
-
-        // 4. ตัดเวลาออก
-        const reportDate = latestReportDate.split(" ")[0].replace(/-/g, "/");
-
-        // แถวที่ 1
-        doc.text('Customer name:', 50, yPos);
-        doc.text(customerName, 125, yPos);
-        doc.moveTo(120, yPos + 18).lineTo(295, yPos + 18).stroke();
-        doc.text('Report No.:', 320, yPos);
-        doc.text(reportNo + currentPage.suffix, 395, yPos);
-        doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
-
-        yPos += 17;
-
-        // แถวที่ 2
-        doc.text('Address:', 50, yPos);
-        doc.fontSize(14).font('AngsanaNew');
-        doc.text(customerAddress, 90, yPos, { width: 210 });
-        doc.fontSize(14).font('AngsanaNew');
-        doc.moveTo(90, yPos + 18).lineTo(295, yPos + 18).stroke();
-        doc.text('Sampling Date:', 320, yPos);
-        doc.text(samplingDate, 395, yPos);
-        doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
-
-        yPos += 17;
-
-        // แถวที่ 3
-        doc.text('', 50, yPos);
-        doc.moveTo(90, yPos + 18).lineTo(295, yPos + 18).stroke();
-        doc.text('Receiving date:', 320, yPos);
-        doc.text(receivingDate, 395, yPos);
-        doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
-
-        yPos += 17;
-
-        // แถวที่ 4
-        doc.text('Source of sample:', 50, yPos);
-        doc.text(sourceOfSample, 125, yPos);
-        doc.moveTo(120, yPos + 18).lineTo(295, yPos + 18).stroke();
-        doc.text('Analysis date:', 320, yPos);
-        doc.text(firstReceive + ' - ' + jobApproveDate, 395, yPos);
-        doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
-
-        yPos += 17;
-        // แถวที่ 5
-        doc.text('Sampling by:', 50, yPos);
-        if (currentPage.showSamplingPersonNo) {
-          doc.text(samplingBy, 125, yPos);
-        } else {
-          samplingBy = samplingBy.replace(/\s*\(.*?\)/, "");
-          doc.text(samplingBy, 125, yPos);
-        }
-        doc.moveTo(120, yPos + 18).lineTo(295, yPos + 18).stroke();
-        doc.text('Report date:', 320, yPos);
-        doc.text(reportDate, 395, yPos);
-        doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
-
-        yPos += 30;
-
-        // 7. ตาราง (15 แถว + หัวตาราง)
-        const tableTop = yPos;
-        const colWidths = [80, 50, 100, 80, 190];
-        const colPositions = [50, 130, 180, 280, 360];
-        let rowHeight = 40;
-
-        // หัวตาราง
-        doc.font('AngsanaNew-Bold').fontSize(14);
-        doc.rect(colPositions[0], tableTop, colWidths[0], rowHeight).stroke();
-        doc.text('Parameters', colPositions[0], tableTop + 10, { width: colWidths[0], align: 'center' });
-
-        doc.rect(colPositions[1], tableTop, colWidths[1], rowHeight).stroke();
-        doc.text('Unit', colPositions[1], tableTop + 10, { width: colWidths[1], align: 'center' });
-
-        doc.rect(colPositions[2], tableTop, colWidths[2], rowHeight).stroke();
-        doc.text('Result', colPositions[2], tableTop + 10, { width: colWidths[2], align: 'center' });
-
-        doc.rect(colPositions[3], tableTop, colWidths[3], rowHeight).stroke();
-        doc.text('Guideline/', colPositions[3], tableTop + 3, { width: colWidths[3], align: 'center' });
-        doc.text('Specification', colPositions[3], tableTop + 17, { width: colWidths[3], align: 'center' });
-
-        doc.rect(colPositions[4], tableTop, colWidths[4], rowHeight).stroke();
-        doc.text('Method', colPositions[4], tableTop + 10, { width: colWidths[4], align: 'center' });
-
-        yPos = tableTop + rowHeight;
-        rowHeight = 20;
-
-        // สร้าง 15 แถว (ใช้ข้อมูลที่ filter แล้ว)
-        doc.font('AngsanaNew').fontSize(14);
-        for (let j = 0; j < 15; j++) {
-          const rowData = reportData[j];
-
-          // Parameters
-          doc.rect(colPositions[0], yPos, colWidths[0], rowHeight).stroke();
-          if (rowData && currentPage.showLabNo) {
-            doc.text(rowData.ITEMNAME || '', colPositions[0] + 5, yPos, { width: colWidths[0] - 10, align: 'center' });
-          } else if (rowData && !currentPage.showLabNo) {
-            doc.text(rowData.ITEMNAME + '**' || '', colPositions[0] + 5, yPos, { width: colWidths[0] - 10, align: 'center' });
+          // 2. LABORATORY No. (ด้านขวา)
+          doc.fontSize(12).font('AngsanaNew-Bold');
+          if (currentPage.showLabNo) {
+            doc.text(labNo, 350, yPos, { width: 200, align: 'right' });
+          } else {
+            doc.text('LABORATORY No. -', 350, yPos, { width: 200, align: 'right' });
           }
 
-          // Unit
-          doc.rect(colPositions[1], yPos, colWidths[1], rowHeight).stroke();
-          if (rowData) {
-            doc.text(rowData.UNIT || '', colPositions[1] + 5, yPos, { width: colWidths[1] - 10, align: 'center' });
+          yPos += 25;
+
+          // 3. ที่อยู่
+          doc.text(companyAddressFront, 50, yPos);
+          yPos += 15;
+          doc.text(companyAddressBack, 50, yPos);
+          yPos += 15;
+
+          // 4. เบอร์โทร
+          doc.fontSize(12).font('AngsanaNew');
+          doc.text(tel, 50, yPos);
+          yPos += 25;
+
+          // 5. หัวข้อ TESTING REPORT ในกล่อง
+          doc.rect(200, yPos, 200, 30).stroke();
+          doc.fontSize(20).font('AngsanaNew-Bold');
+          doc.text('TESTING REPORT', 200, yPos + 2, { width: 200, align: 'center' });
+
+          yPos += 45;
+
+          // 6. ข้อมูล Customer, Report No, etc.
+          doc.fontSize(14).font('AngsanaNew');
+
+          const customerName = allReportData[0]?.CUSTNAME || '';
+          const reportNo = reportKey || '';
+          const raw = allReportData[0]?.SAMPDATE || '';
+          const samplingDate = raw ? raw.split(" ")[0].replace(/-/g, "/") : '';
+
+          // 1. Filter เฉพาะ record ที่มี RECEIVEDDATE
+          const receivedList = allReportData
+            .filter(x => x.RECEIVEDDATE && x.RECEIVEDDATE.trim() !== "");
+
+          // 2. sort เอาตัวที่วันที่ใหม่ที่สุด (Descending)
+          receivedList.sort((a, b) => {
+            return new Date(b.RECEIVEDDATE) - new Date(a.RECEIVEDDATE);
+          });
+
+          // 3. ดึงวันที่ล่าสุด
+          const latestReceived = receivedList[0]?.RECEIVEDDATE || "";
+
+          // 4. ตัดเวลาออก
+          const receivingDate = latestReceived.split(" ")[0].replace(/-/g, "/");
+
+          const sourceOfSample = allReportData[0]?.SAMPNAME || '';
+
+          // 1. Filter เฉพาะที่มี RECEIVEDDATE
+          const receivefirstList = allReportData
+            .filter(x => x.RECEIVEDDATE && x.RECEIVEDDATE.trim() !== "");
+
+          // 2. sort แบบเก่าสุดมาก่อน (Ascending)
+          receivefirstList.sort((a, b) => {
+            return new Date(b.RECEIVEDDATE) - new Date(a.RECEIVEDDATE);
+          });
+
+          // 3. ดึงวันที่เก่าสุด
+          const firstReceiveDate = receivefirstList[0]?.RECEIVEDDATE || "";
+
+          // 4. ตัดเวลาออก
+          const firstReceive = firstReceiveDate.split(" ")[0].replace(/-/g, "/");
+
+          // 1. Filter เฉพาะ record ที่มี JOBAPPROVEDATE
+          const jobApproveDateList = allReportData
+            .filter(x => x.JOBAPPROVEDATE && x.JOBAPPROVEDATE.trim() !== "");
+
+          // 2. sort เอาตัวที่วันที่ใหม่ที่สุด (Descending)
+          jobApproveDateList.sort((a, b) => {
+            return new Date(b.JOBAPPROVEDATE) - new Date(a.JOBAPPROVEDATE);
+          });
+
+          // 3. ดึงวันที่ล่าสุด
+          const latestjobApproveDate = jobApproveDateList[0]?.JOBAPPROVEDATE || "";
+
+          // 4. ตัดเวลาออก
+          const jobApproveDate = latestjobApproveDate.split(" ")[0].replace(/-/g, "/");
+
+          let samplingBy = allReportData[0]?.SAMPPERSON || '';
+
+          // 1. Filter เฉพาะ record ที่มี REPORTAPPROVEDATE
+          const reportDateList = allReportData
+            .filter(x => x.REPORTAPPROVEDATE && x.REPORTAPPROVEDATE.trim() !== "");
+
+          // 2. sort เอาตัวที่วันที่ใหม่ที่สุด (Descending)
+          reportDateList.sort((a, b) => {
+            return new Date(b.REPORTAPPROVEDATE) - new Date(a.REPORTAPPROVEDATE);
+          });
+
+          // 3. ดึงวันที่ล่าสุด
+          const latestReportDate = reportDateList[0]?.REPORTAPPROVEDATE || "";
+
+          // 4. ตัดเวลาออก
+          const reportDate = latestReportDate.split(" ")[0].replace(/-/g, "/");
+
+          // แถวที่ 1
+          doc.text('Customer name:', 50, yPos);
+          doc.text(customerName, 125, yPos);
+          doc.moveTo(120, yPos + 18).lineTo(295, yPos + 18).stroke();
+          doc.text('Report No.:', 320, yPos);
+          doc.text(reportNo + currentPage.suffix, 395, yPos);
+          doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
+
+          yPos += 17;
+
+          // แถวที่ 2
+          doc.text('Address:', 50, yPos);
+          doc.fontSize(14).font('AngsanaNew');
+          doc.text(customerAddress, 90, yPos, { width: 210 });
+          doc.fontSize(14).font('AngsanaNew');
+          doc.moveTo(90, yPos + 18).lineTo(295, yPos + 18).stroke();
+          doc.text('Sampling Date:', 320, yPos);
+          doc.text(samplingDate, 395, yPos);
+          doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
+
+          yPos += 17;
+
+          // แถวที่ 3
+          doc.text('', 50, yPos);
+          doc.moveTo(90, yPos + 18).lineTo(295, yPos + 18).stroke();
+          doc.text('Receiving date:', 320, yPos);
+          doc.text(receivingDate, 395, yPos);
+          doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
+
+          yPos += 17;
+
+          // แถวที่ 4
+          doc.text('Source of sample:', 50, yPos);
+          doc.text(sourceOfSample, 125, yPos);
+          doc.moveTo(120, yPos + 18).lineTo(295, yPos + 18).stroke();
+          doc.text('Analysis date:', 320, yPos);
+          doc.text(firstReceive + ' - ' + jobApproveDate, 395, yPos);
+          doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
+
+          yPos += 17;
+          // แถวที่ 5
+          doc.text('Sampling by:', 50, yPos);
+          if (currentPage.showSamplingPersonNo) {
+            doc.text(samplingBy, 125, yPos);
+          } else {
+            samplingBy = samplingBy.replace(/\s*\(.*?\)/, "");
+            doc.text(samplingBy, 125, yPos);
           }
+          doc.moveTo(120, yPos + 18).lineTo(295, yPos + 18).stroke();
+          doc.text('Report date:', 320, yPos);
+          doc.text(reportDate, 395, yPos);
+          doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
 
-          // Result
-          doc.rect(colPositions[2], yPos, colWidths[2], rowHeight).stroke();
-          if (rowData) {
+          yPos += 30;
 
-            // หา approver จาก Master_User
-            const approver = masterUser.find(
-              u => u.Name === rowData.JOBAPPROVER
-            );
-            // console.log("approver", approver);
-            let showStar = false;
+          // 7. ตาราง (15 แถว + หัวตาราง)
+          const tableTop = yPos;
+          const colWidths = [80, 50, 110, 70, 190];
+          const colPositions = [50, 130, 180, 290, 360];
+          let rowHeight = 40;
 
-            if (approver) {
-              const approverBranch = approver.Branch;
-              const reportBranch = branch; // firstData[0].REQBRANCH
+          // หัวตาราง
+          doc.font('AngsanaNew-Bold').fontSize(14);
+          doc.rect(colPositions[0], tableTop, colWidths[0], rowHeight).stroke();
+          doc.text('Parameters', colPositions[0], tableTop + 10, { width: colWidths[0], align: 'center' });
 
-              // เงื่อนไขเพิ่มดอกจันทร์
-              if (
-                (approverBranch === 'BANGPOO' && reportBranch === 'TPK HES LAB') ||
-                (approverBranch === 'RAYONG' && reportBranch === 'TPK BANGPOO LAB')
-              ) {
-                showStar = true;
-              }
+          doc.rect(colPositions[1], tableTop, colWidths[1], rowHeight).stroke();
+          doc.text('Unit', colPositions[1], tableTop + 10, { width: colWidths[1], align: 'center' });
+
+          doc.rect(colPositions[2], tableTop, colWidths[2], rowHeight).stroke();
+          doc.text('Result', colPositions[2], tableTop + 10, { width: colWidths[2], align: 'center' });
+
+          doc.rect(colPositions[3], tableTop, colWidths[3], rowHeight).stroke();
+          doc.text('Guideline/', colPositions[3], tableTop + 3, { width: colWidths[3], align: 'center' });
+          doc.text('Specification', colPositions[3], tableTop + 17, { width: colWidths[3], align: 'center' });
+
+          doc.rect(colPositions[4], tableTop, colWidths[4], rowHeight).stroke();
+          doc.text('Method', colPositions[4], tableTop + 10, { width: colWidths[4], align: 'center' });
+
+          yPos = tableTop + rowHeight;
+          rowHeight = 20;
+
+          // สร้าง 15 แถว (แต่ใช้ข้อมูลจาก currentPageData)
+          doc.font('AngsanaNew').fontSize(14);
+          for (let j = 0; j < itemsPerPage; j++) {
+            const rowData = currentPageData[j];
+
+            // Parameters
+            doc.rect(colPositions[0], yPos, colWidths[0], rowHeight).stroke();
+            if (rowData && currentPage.showLabNo) {
+              doc.text(rowData.ITEMNAME || '', colPositions[0] + 5, yPos, { width: colWidths[0] - 10, align: 'center' });
+            } else if (rowData && !currentPage.showLabNo) {
+              doc.text(rowData.ITEMNAME + '**' || '', colPositions[0] + 5, yPos, { width: colWidths[0] - 10, align: 'center' });
             }
 
-            const resultText =
-              (rowData.RESULTAPPROVE || '') + (showStar ? '*' : '');
-            if (rowData.ITEMNAME === 'Color') {
-              doc.font('AngsanaNew-Bold').fontSize(13);
-              doc.text(
-                resultText,
-                colPositions[2] + 5,
-                yPos + 2,
-                {
-                  width: colWidths[2] - 10,
-                  align: 'center'
-                }
+            // Unit
+            doc.rect(colPositions[1], yPos, colWidths[1], rowHeight).stroke();
+            if (rowData) {
+              doc.text(rowData.UNIT || '', colPositions[1] + 5, yPos, { width: colWidths[1] - 10, align: 'center' });
+            }
+
+            // Result
+            doc.rect(colPositions[2], yPos, colWidths[2], rowHeight).stroke();
+            if (rowData) {
+
+              // หา approver จาก Master_User
+              const approver = masterUser.find(
+                u => u.Name === rowData.JOBAPPROVER
               );
-            } else {
-              doc.font('AngsanaNew-Bold').fontSize(14);
-              doc.text(
-                resultText,
-                colPositions[2] + 5,
-                yPos,
-                {
-                  width: colWidths[2] - 10,
-                  align: 'center'
+              let showStar = false;
+
+              if (approver) {
+                const approverBranch = approver.Branch;
+                const reportBranch = branch;
+
+                // เงื่อนไขเพิ่มดอกจันทร์
+                if (
+                  (approverBranch === 'BANGPOO' && reportBranch === 'TPK HES LAB') ||
+                  (approverBranch === 'RAYONG' && reportBranch === 'TPK BANGPOO LAB')
+                ) {
+                  showStar = true;
                 }
-              );
-            }
-            doc.font('AngsanaNew').fontSize(14);
-          }
-
-          // Guideline/Specification
-          doc.rect(colPositions[3], yPos, colWidths[3], rowHeight).stroke();
-          if (rowData) {
-            const controlRange = rowData.CONTROLRANGE || '';
-
-            if (controlRange.includes('≤')) {
-              const parts = controlRange.split('≤');
-              const cellCenterX = colPositions[3] + colWidths[3] / 2;
-
-              doc.font('cambria-math').fontSize(10);
-              const symbolWidth = doc.widthOfString('≤');
-              doc.font('AngsanaNew').fontSize(14);
-              const textWidth = doc.widthOfString(parts.join(''));
-
-              const totalWidth = textWidth + symbolWidth;
-              let xPos = cellCenterX - (totalWidth / 2);
-
-              const mainFontSize = 18;
-              const yOffset = (rowHeight - mainFontSize) / 2;
-              const textYPos = yPos + yOffset;
-
-              if (parts[0]) {
-                doc.font('AngsanaNew').fontSize(14);
-                doc.text(parts[0], xPos, textYPos, { width: colWidths[3], lineBreak: false, continued: true });
-                xPos += doc.widthOfString(parts[0]);
               }
 
-              const symbolYOffset = (rowHeight - 10) / 2 - 1;
-              doc.font('cambria-math').fontSize(10);
-              doc.text('≤', xPos, yPos + symbolYOffset, { width: colWidths[3], lineBreak: false, continued: true });
-              xPos += symbolWidth;
-              xPos -= 8;
-
-              if (parts[1]) {
-                doc.font('AngsanaNew').fontSize(14);
-                doc.text(parts[1], xPos, textYPos, { width: colWidths[3], lineBreak: false });
+              const resultText =
+                (rowData.RESULTAPPROVE || '') + (showStar ? '*' : '');
+              if (rowData.ITEMNAME === 'Color') {
+                doc.font('AngsanaNew-Bold').fontSize(13);
+                doc.text(
+                  resultText,
+                  colPositions[2] + 5,
+                  yPos + 2,
+                  {
+                    width: colWidths[2] - 10,
+                    align: 'center'
+                  }
+                );
+              } else {
+                doc.font('AngsanaNew-Bold').fontSize(14);
+                doc.text(
+                  resultText,
+                  colPositions[2] + 5,
+                  yPos,
+                  {
+                    width: colWidths[2] - 10,
+                    align: 'center'
+                  }
+                );
               }
-
-            } else {
               doc.font('AngsanaNew').fontSize(14);
-              doc.text(controlRange, colPositions[3] + 5, yPos, { width: colWidths[3] - 10, align: 'center' });
             }
 
-            doc.font('AngsanaNew').fontSize(14);
+            // Guideline/Specification
+            doc.rect(colPositions[3], yPos, colWidths[3], rowHeight).stroke();
+            if (rowData) {
+              const controlRange = rowData.CONTROLRANGE || '';
+
+              if (controlRange.includes('≤')) {
+                const parts = controlRange.split('≤');
+                const cellCenterX = colPositions[3] + colWidths[3] / 2;
+
+                doc.font('cambria-math').fontSize(10);
+                const symbolWidth = doc.widthOfString('≤');
+                doc.font('AngsanaNew').fontSize(14);
+                const textWidth = doc.widthOfString(parts.join(''));
+
+                const totalWidth = textWidth + symbolWidth;
+                let xPos = cellCenterX - (totalWidth / 2);
+
+                const mainFontSize = 18;
+                const yOffset = (rowHeight - mainFontSize) / 2;
+                const textYPos = yPos + yOffset;
+
+                if (parts[0]) {
+                  doc.font('AngsanaNew').fontSize(14);
+                  doc.text(parts[0], xPos, textYPos, { width: colWidths[3], lineBreak: false, continued: true });
+                  xPos += doc.widthOfString(parts[0]);
+                }
+
+                const symbolYOffset = (rowHeight - 10) / 2 - 1;
+                doc.font('cambria-math').fontSize(10);
+                doc.text('≤', xPos, yPos + symbolYOffset, { width: colWidths[3], lineBreak: false, continued: true });
+                xPos += symbolWidth;
+                xPos -= 8;
+
+                if (parts[1]) {
+                  doc.font('AngsanaNew').fontSize(14);
+                  doc.text(parts[1], xPos, textYPos, { width: colWidths[3], lineBreak: false });
+                }
+
+              } else {
+                doc.font('AngsanaNew').fontSize(14);
+                doc.text(controlRange, colPositions[3] + 5, yPos, { width: colWidths[3] - 10, align: 'center' });
+              }
+
+              doc.font('AngsanaNew').fontSize(14);
+            }
+
+            // Method
+            doc.rect(colPositions[4], yPos, colWidths[4], rowHeight).stroke();
+            if (rowData) {
+              doc.text(rowData.METHOD || '', colPositions[4] + 5, yPos, { width: colWidths[4] - 10, align: 'left' });
+            }
+
+            yPos += rowHeight;
           }
 
-          // Method
-          doc.rect(colPositions[4], yPos, colWidths[4], rowHeight).stroke();
-          if (rowData) {
-            doc.text(rowData.METHOD || '', colPositions[4] + 5, yPos, { width: colWidths[4] - 10, align: 'left' });
+          yPos += 7;
+
+          // 8. Remark (ใช้ Remark_Job ของ BOD)
+          doc.fontSize(14).font('AngsanaNew-Bold');
+          doc.text('Remark:', 50, yPos);
+          yPos += 15;
+
+          // หา BOD remark จาก allReportData
+          const bodData = allReportData.find(item => item.ITEMNAME === 'BOD');
+          const remarkText = bodData?.REMARKJOB || '';
+
+          doc.fontSize(14).font('AngsanaNew');
+          if (currentPage.showRemark) {
+            doc.text(remarkText, 50, yPos, { width: 500 });
+          } else {
+            doc.text('', 50, yPos, { width: 500 });
           }
 
-          yPos += rowHeight;
-        }
+          yPos += 17;
+          doc.moveTo(50, yPos).lineTo(550, yPos).stroke();
+          yPos += 17;
+          doc.moveTo(50, yPos).lineTo(550, yPos).stroke();
+          yPos += 5;
 
-        yPos += 7;
+          // 9. หัวข้อ 1-5
+          doc.fontSize(12).font('AngsanaNew');
+          doc.text('1. This report is according to Ministry of Industry Announcement Subject: Establishing standards for controlling wastewater drainage from factories, B.E.2560', 50, yPos, { width: 550 });
+          yPos += 12;
 
-        // 8. Remark (ใช้ Remark_Job ของ BOD)
-        doc.fontSize(14).font('AngsanaNew-Bold');
-        doc.text('Remark:', 50, yPos);
-        yPos += 15;
+          doc.text('2. Guideline/Specification are according to Notification of the Industrial Estate Authority of Thailand No.76, B.E.2560: Criteria of wastewater', 50, yPos, { width: 550 });
+          yPos += 12;
 
-        // หา BOD remark จาก allReportData
-        const bodData = allReportData.find(item => item.ITEMNAME === 'BOD');
-        const remarkText = bodData?.REMARKJOB || '';
+          doc.text('3. Analysis Method refer to Standard Methods for the Examination of Water and Wastewater, 24th Edition, 2023', 50, yPos, { width: 550 });
+          yPos += 12;
 
-        doc.fontSize(14).font('AngsanaNew');
-        if (currentPage.showRemark) {
-          doc.text(remarkText, 50, yPos, { width: 500 });
-        } else {
-          doc.text('', 50, yPos, { width: 500 });
-        }
+          doc.text('4. * Means result from Thai Parkerizing Co., Ltd.: ' + labNoRemark, 50, yPos, { width: 550 });
+          yPos += 12;
 
+          doc.text('5. **Means the parameter is not registered by DIW', 50, yPos, { width: 550 });
+          yPos += 20;
 
-        yPos += 17;
-        doc.moveTo(50, yPos).lineTo(550, yPos).stroke();
-        yPos += 17;
-        doc.moveTo(50, yPos).lineTo(550, yPos).stroke();
-        yPos += 5;
+          // 10. Report by และ Approve by
+          doc.fontSize(14).font('AngsanaNew');
 
-        // 9. หัวข้อ 1-4
-        doc.fontSize(12).font('AngsanaNew');
-        // if (currentPage.showBottomRemark) {
-        doc.text('1. This report is according to Ministry of Industry Announcement Subject: Establishing standards for controlling wastewater drainage from factories, B.E.2560', 50, yPos, { width: 550 });
-        yPos += 12;
+          doc.text('Reported by:', 50, yPos);
+          doc.text('Approved by:', 340, yPos);
 
-        doc.text('2. Guideline/Specification are according to Notification of the Industrial Estate Authority of Thailand No.76, B.E.2560: Criteria of wastewater', 50, yPos, { width: 550 });
-        yPos += 12;
+          const job = findFinalApprover(
+            allReportData,
+            "JOBAPPROVER",
+            "JobApproverFullName",
+            "JobApproverRegistrationNo"
+          );
 
-        doc.text('3. Analysis Method refer to Standard Methods for the Examination of Water and Wastewater, 24th Edition, 2023', 50, yPos, { width: 550 });
-        yPos += 12;
+          const finalJobApprover = job.name;
+          const finalJobFullName = job.fullName;
+          const finalJobRegNo = job.regNo;
 
-        doc.text('4. * Means result from Thai Parkerizing Co., Ltd.: ' + labNoRemark, 50, yPos, { width: 550 });
-        yPos += 12;
+          const report = findFinalApprover(
+            allReportData,
+            "REPORTAPPROVER",
+            "ReportApproverFullName",
+            "ReportApproverRegistrationNo"
+          );
 
-        doc.text('5. **Means the parameter is not registered by DIW', 50, yPos, { width: 550 });
-        yPos += 20;
-        // } else {
-        //   doc.text('These parameters are not registered by DIW.', 50, yPos, { width: 550 });
-        //   yPos += 56;
-        // }
+          const finalReportApprover = report.name;
+          const finalReportFullName = report.fullName;
+          const finalReportRegNo = report.regNo;
 
+          const reporterSignPath = `\\\\172.23.10.51\\Sign_Pic\\${finalJobApprover}.jpg`;
+          const approverSignPath = `\\\\172.23.10.51\\Sign_Pic\\${finalReportApprover}.jpg`;
 
+          const jobImgX = 150;
+          const reportImgX = 430;
+          const imgW = 50;
+          const imgH = 30;
 
-        // 10. Report by และ Approve by
-        doc.fontSize(14).font('AngsanaNew');
+          if (fs.existsSync(reporterSignPath)) {
+            doc.image(reporterSignPath, jobImgX, yPos, { width: imgW, height: imgH });
+          }
 
-        doc.text('Reported by:', 50, yPos);
-        doc.text('Approved by:', 340, yPos);
+          if (fs.existsSync(approverSignPath)) {
+            doc.image(approverSignPath, reportImgX, yPos, { width: imgW, height: imgH });
+          }
 
-        const job = findFinalApprover(
-          allReportData,
-          "JOBAPPROVER",
-          "JobApproverFullName",
-          "JobApproverRegistrationNo"
-        );
+          yPos += imgH;
 
-        const finalJobApprover = job.name;
-        const finalJobFullName = job.fullName;
-        const finalJobRegNo = job.regNo;
+          const jobNameX = jobImgX + (imgW - doc.widthOfString("(" + finalJobFullName + ")")) / 2;
+          const reportNameX = reportImgX + (imgW - doc.widthOfString("(" + finalReportFullName + ")")) / 2;
 
-        const report = findFinalApprover(
-          allReportData,
-          "REPORTAPPROVER",
-          "ReportApproverFullName",
-          "ReportApproverRegistrationNo"
-        );
+          doc.text("(" + finalJobFullName + ")", jobNameX, yPos);
+          doc.text("(" + finalReportFullName + ")", reportNameX, yPos);
 
-        const finalReportApprover = report.name;
-        const finalReportFullName = report.fullName;
-        const finalReportRegNo = report.regNo;
+          yPos += 15;
 
-        const reporterSignPath = `\\\\172.23.10.51\\Sign_Pic\\${finalJobApprover}.jpg`;
-        const approverSignPath = `\\\\172.23.10.51\\Sign_Pic\\${finalReportApprover}.jpg`;
+          const jobRegX = jobImgX + (imgW - doc.widthOfString("Registration No. " + finalJobRegNo)) / 2;
+          const reportRegX = reportImgX + (imgW - doc.widthOfString("Registration No. " + finalReportRegNo)) / 2;
 
-        const jobImgX = 150;
-        const reportImgX = 430;
-        const imgW = 50;
-        const imgH = 30;
+          doc.fontSize(14);
+          if (currentPage.showRegistrationNo) {
+            doc.text("Registration No. " + finalJobRegNo, jobRegX, yPos);
+            doc.text("Registration No. " + finalReportRegNo, reportRegX, yPos);
+          } else {
+            doc.text("Registration No. -", 143, yPos);
+            doc.text("Registration No. -", 423, yPos);
+          }
 
-        if (fs.existsSync(reporterSignPath)) {
-          doc.image(reporterSignPath, jobImgX, yPos, { width: imgW, height: imgH });
-        }
+          yPos += 20;
 
-        if (fs.existsSync(approverSignPath)) {
-          doc.image(approverSignPath, reportImgX, yPos, { width: imgW, height: imgH });
-        }
+          // 11. ท้ายกระดาษ
+          doc.fontSize(14).font('AngsanaNew').fillColor('grey');
+          doc.text(DocNo, 50, yPos);
+          yPos += 20;
 
-        yPos += imgH;
-
-        const jobNameX = jobImgX + (imgW - doc.widthOfString("(" + finalJobFullName + ")")) / 2;
-        const reportNameX = reportImgX + (imgW - doc.widthOfString("(" + finalReportFullName + ")")) / 2;
-
-        doc.text("(" + finalJobFullName + ")", jobNameX, yPos);
-        doc.text("(" + finalReportFullName + ")", reportNameX, yPos);
-
-        yPos += 15;
-
-        const jobRegX = jobImgX + (imgW - doc.widthOfString("Registration No. " + finalJobRegNo)) / 2;
-        const reportRegX = reportImgX + (imgW - doc.widthOfString("Registration No. " + finalReportRegNo)) / 2;
-
-        doc.fontSize(14);
-        if (currentPage.showRegistrationNo) {
-          doc.text("Registration No. " + finalJobRegNo, jobRegX, yPos);
-          doc.text("Registration No. " + finalReportRegNo, reportRegX, yPos);
-        } else {
-          doc.text("Registration No. -", 143, yPos);
-          doc.text("Registration No. -", 423, yPos);
-        }
-
-
-        yPos += 20;
-
-        // 11. ท้ายกระดาษ
-        doc.fontSize(14).font('AngsanaNew').fillColor('grey');
-        doc.text(DocNo, 50, yPos);
-        yPos += 20;
-
-        doc.fontSize(9);
-        doc.text('This report certifies only the samples that have been analyzed. Do not use this report for advertising or reference without permission. If any numbers or text are scratched, deleted, crossed out, edited or changed.', 50, yPos, { width: 500 });
-        yPos += 10;
-        doc.text('This report will be considered incomplete. Do not copy only part of the report of the results of the inspection, measurement, and analysis. without written permission from the laboratory.', 50, yPos, { align: 'center', width: 500 });
-      }
-    }
+          doc.fontSize(9);
+          doc.text('This report certifies only the samples that have been analyzed. Do not use this report for advertising or reference without permission. If any numbers or text are scratched, deleted, crossed out, edited or changed.', 50, yPos, { width: 500 });
+          yPos += 10;
+          doc.text('This report will be considered incomplete. Do not copy only part of the report of the results of the inspection, measurement, and analysis. without written permission from the laboratory.', 50, yPos, { align: 'center', width: 500 });
+        } // จบ loop subPageIndex
+      } // จบ loop pageIndex
+    } // จบ loop reportKeys
 
     doc.end();
 
