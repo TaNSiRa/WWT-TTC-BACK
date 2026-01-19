@@ -286,7 +286,12 @@ router.post("/WWT/CreateReport", async (req, res) => {
           doc.text(sourceOfSample, 125, yPos);
           doc.moveTo(120, yPos + 18).lineTo(295, yPos + 18).stroke();
           doc.text('Analysis date:', 320, yPos);
-          doc.text(firstReceive + ' - ' + jobApproveDate, 395, yPos);
+          if (firstReceive !== '' && jobApproveDate !== '') {
+            doc.text(firstReceive + ' - ' + jobApproveDate, 395, yPos);
+          } else {
+            doc.text('', 395, yPos);
+          }
+
           doc.moveTo(390, yPos + 18).lineTo(550, yPos + 18).stroke();
 
           yPos += 17;
@@ -375,7 +380,7 @@ router.post("/WWT/CreateReport", async (req, res) => {
               }
 
               const resultText =
-                (rowData.RESULTAPPROVE || '') + (showStar ? '*' : '');
+                (rowData.RESULTAPPROVE || 'WAIT') + (showStar ? '*' : '');
               if (rowData.ITEMNAME === 'Color') {
                 doc.font('AngsanaNew-Bold').fontSize(13);
                 doc.text(
@@ -546,10 +551,16 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
           const jobNameX = jobImgX + (imgW - doc.widthOfString("(" + finalJobFullName + ")")) / 2;
           const reportNameX = reportImgX + (imgW - doc.widthOfString("(" + finalReportFullName + ")")) / 2;
-
-          doc.text("(" + finalJobFullName + ")", jobNameX, yPos);
-          doc.text("(" + finalReportFullName + ")", reportNameX, yPos);
-
+          if (finalJobFullName !== '') {
+            doc.text("(" + finalJobFullName + ")", jobNameX, yPos);
+          } else {
+            doc.text("(                        )", jobNameX, yPos);
+          }
+          if (finalReportFullName !== '') {
+            doc.text("(" + finalReportFullName + ")", reportNameX, yPos);
+          } else {
+            doc.text("(                        )", reportNameX, yPos);
+          }
           yPos += 15;
 
           const jobRegX = jobImgX + (imgW - doc.widthOfString("Registration No. " + finalJobRegNo)) / 2;
@@ -619,13 +630,25 @@ function findFinalApprover(reportData, keyName, keyFullName, keyRegNo) {
   }
 
   const countMap = {};
+
   reportData.forEach(item => {
-    const name = item[keyName]?.trim();
+    if (!item || typeof item !== 'object') return;
+
+    const rawName = item[keyName];
+    if (typeof rawName !== 'string') return;
+
+    const name = rawName.trim();
     if (!name) return;
+
     countMap[name] = (countMap[name] || 0) + 1;
   });
 
-  const maxCount = Math.max(...Object.values(countMap));
+  const counts = Object.values(countMap);
+  if (counts.length === 0) {
+    return { name: "", fullName: "", regNo: "" };
+  }
+
+  const maxCount = Math.max(...counts);
 
   const candidates = Object.keys(countMap).filter(
     name => countMap[name] === maxCount
@@ -633,17 +656,33 @@ function findFinalApprover(reportData, keyName, keyFullName, keyRegNo) {
 
   if (candidates.length === 1) {
     const name = candidates[0];
-    const record = reportData.find(x => x[keyName] === name);
+
+    const record = reportData.find(
+      x => x && typeof x === 'object' && x[keyName] === name
+    );
+
     return {
       name,
-      fullName: record?.[keyFullName] || "",
-      regNo: record?.[keyRegNo] || ""
+      fullName:
+        typeof record?.[keyFullName] === 'string'
+          ? record[keyFullName]
+          : "",
+      regNo:
+        typeof record?.[keyRegNo] === 'string'
+          ? record[keyRegNo]
+          : ""
     };
   }
 
   const regList = candidates.map(name => {
-    const record = reportData.find(x => x[keyName] === name);
-    const regNo = record?.[keyRegNo] || "";
+    const record = reportData.find(
+      x => x && typeof x === 'object' && x[keyName] === name
+    );
+
+    const regNo =
+      typeof record?.[keyRegNo] === 'string'
+        ? record[keyRegNo]
+        : "";
 
     const match = regNo.match(/(\d{4})$/);
     const last4 = match ? parseInt(match[1], 10) : 9999;
@@ -654,12 +693,22 @@ function findFinalApprover(reportData, keyName, keyFullName, keyRegNo) {
   regList.sort((a, b) => a.last4 - b.last4);
 
   const best = regList[0];
+  if (!best) {
+    return { name: "", fullName: "", regNo: "" };
+  }
 
   return {
-    name: best.name,
-    fullName: best.record?.[keyFullName] || "",
-    regNo: best.record?.[keyRegNo] || ""
+    name: best.name || "",
+    fullName:
+      typeof best.record?.[keyFullName] === 'string'
+        ? best.record[keyFullName]
+        : "",
+    regNo:
+      typeof best.record?.[keyRegNo] === 'string'
+        ? best.record[keyRegNo]
+        : ""
   };
 }
+
 
 module.exports = router;
