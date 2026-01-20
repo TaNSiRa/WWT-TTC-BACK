@@ -9528,6 +9528,7 @@ async function generateBaseReqNo(reqBranch) {
   const result = await mssql.qurey(`
     SELECT TOP 1 ReqNo FROM [WWT].[dbo].[Request]
     WHERE ReqBranch = '${reqBranch}'
+    AND ReqNo LIKE 'ENV-${prefix}-${currentYear}%'
     ORDER BY ReqNo DESC
   `);
 
@@ -9548,15 +9549,22 @@ async function generateBaseJobCode(reqBranch, instrument) {
   const currentYear = new Date().getFullYear().toString().slice(-2);
   let prefix = 'ACB';
 
-  if (reqBranch === 'RAYONG') prefix = 'ACR';
+  if (reqBranch === 'RAYONG') {
+    prefix = 'ACR';
+    reqBranch = 'TPK HES LAB';
+  } else {
+    reqBranch = 'TPK BANGPOO LAB';
+  }
 
   const result = await mssql.qurey(`
-    SELECT TOP 1 JobCode FROM [WWT].[dbo].[${instrument}]
+    SELECT TOP 1 JobCode 
+    FROM [WWT].[dbo].[${instrument}]
     WHERE ReqBranch = '${reqBranch}'
+    AND JobCode LIKE 'JOB-ENV-${prefix}-${currentYear}%'
     ORDER BY JobCode DESC
   `);
-  // console.log(instrument);
-  // console.log(reqBranch);
+  console.log(instrument);
+  console.log(reqBranch);
   let nextNumber = 1;
   if (result.recordset.length > 0) {
     const lastJobCode = result.recordset[0].JobCode; // JOB-ENV-ACB-25XXXX
