@@ -152,9 +152,73 @@ router.post('/TLA/SETWWTITEM', async (req, res) => {
     } else {
       let find01 = await mongodb.find("TALMASTER", "WWTITEM", { "masterID": input[`masterID`] });
       if (find01.length > 0) {
-        let letsetdata = { "INSTRUMENTNAME": input['INSTRUMENTNAME'], "ITEMNAME": input['ITEMNAME'], "BOTTLENO": input['BOTTLENO'], "REPORTFORMAT": input['REPORTFORMAT'] }
-        let update01 = await mongodb.update("TALMASTER", "WWTITEM", { 'masterID': input[`masterID`] }, { "$set": letsetdata });
-        output = "OK";
+        let letsetdata = {};
+
+        const fields = [
+          'INSTRUMENTNAME',
+          'ITEMNAME',
+          'BOTTLENO',
+          'REPORTFORMAT',
+          'LOQ',
+          'Blank',
+          'Curve_Min',
+          'Curve_Max',
+          'STD_Min',
+          'STD_Max',
+          'QCS_Value_Min',
+          'QCS_Value_Max',
+          'QCS_Recovery_Min',
+          'QCS_Recovery_Max',
+          'CCV_CCS_CVS_Value',
+          'CCV_CCS_CVS_Min',
+          'CCV_CCS_CVS_Max',
+          'LFB_Value',
+          'LFB_Min',
+          'LFB_Max',
+          'LFM_Value',
+          'LFM_Min',
+          'LFM_Max',
+          'Diff_Min',
+          'Diff_Max',
+          'W2_W1_Min',
+          'W2_W1_Max',
+          'Blank_Seed_Min',
+          'Blank_Seed_Max',
+          'Seed_Control_Min',
+          'Seed_Control_Max',
+          'GGA_Check_Min',
+          'GGA_Check_Max',
+          'DO5',
+          'DO0_DO5',
+          'RPD',
+          'R2',
+          'Slope_Min',
+          'Slope_Max',
+          'Temp_Min',
+          'Temp_Max',
+          'Report_Digit',
+          'Spec'
+        ];
+
+        fields.forEach((key) => {
+          if (input[key] !== undefined && input[key] !== "" && input[key] !== null) {
+            letsetdata[key] = input[key];
+          }
+        });
+
+        if (Object.keys(letsetdata).length > 0) {
+          await mongodb.update(
+            "TALMASTER",
+            "WWTITEM",
+            { masterID: input.masterID },
+            { $set: letsetdata }
+          );
+          output = "OK";
+        }
+
+        // let letsetdata = { "INSTRUMENTNAME": input['INSTRUMENTNAME'], "ITEMNAME": input['ITEMNAME'], "BOTTLENO": input['BOTTLENO'], "REPORTFORMAT": input['REPORTFORMAT'] }
+        // let update01 = await mongodb.update("TALMASTER", "WWTITEM", { 'masterID': input[`masterID`] }, { "$set": letsetdata });
+        // output = "OK";
       }
     }
 
@@ -1929,6 +1993,14 @@ router.post('/WWT/listNewJob', async (req, res) => {
     let allQueries = '';
     let itemStatusValue = '';
 
+    // ดึงข้อมูล Master จาก MongoDB
+    let wwtItemMaster = await mongodb.find(
+      "TALMASTER",
+      "WWTITEM",
+      { INSTRUMENTNAME: insName, activeid: "active_id" }
+    );
+    const masterData = wwtItemMaster || [];
+
     // STEP 1: UPDATE
     for (const data of dataRow) {
       let fields = [];
@@ -2025,11 +2097,24 @@ router.post('/WWT/listNewJob', async (req, res) => {
       let insertQuery = '';
 
       for (const data of dataRow) {
+
+        let master = {};
+        if (insName === 'ICP') {
+          const matchedMaster = masterData.find(m => m.ITEMNAME === data.ITEMNAME);
+          master = matchedMaster || {};
+        } else {
+          master = masterData[0] || {};
+        }
+        // console.log(master);
         let fields = [];
         function pushField(name, value) {
-          if (value !== '') {
-            const escapedValue = value.toString().replace(/'/g, "''");
-            fields.push(`[${name}] = '${escapedValue}'`);
+          if (value !== '' && value !== null && value !== undefined) {
+            if (!isNaN(value)) {
+              fields.push(`[${name}] = ${value}`);
+            } else {
+              const escapedValue = value.toString().replace(/'/g, "''");
+              fields.push(`[${name}] = N'${escapedValue}'`);
+            }
           } else {
             fields.push(`[${name}] = NULL`);
           }
@@ -2047,7 +2132,146 @@ router.post('/WWT/listNewJob', async (req, res) => {
         if (data.INSNAME === 'ICP') {
           pushField("ItemName", data.ITEMNAME);
         }
-
+        if (data.INSNAME === 'BOD') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_Blank_Seed_Min", master.Blank_Seed_Min);
+          pushField("Master_Blank_Seed_Max", master.Blank_Seed_Max);
+          pushField("Master_Seed_Control_Min", master.Seed_Control_Min);
+          pushField("Master_Seed_Control_Max", master.Seed_Control_Max);
+          pushField("Master_GGA_Check_Min", master.GGA_Check_Min);
+          pushField("Master_GGA_Check_Max", master.GGA_Check_Max);
+          pushField("Master_DO5", master.DO5);
+          pushField("Master_DO0_DO5", master.DO0_DO5);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'COD') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_LFB_Value", master.LFB_Value);
+          pushField("Master_LFB_Min", master.LFB_Min);
+          pushField("Master_LFB_Max", master.LFB_Max);
+          pushField("Master_LFM_Value", master.LFM_Value);
+          pushField("Master_LFM_Min", master.LFM_Min);
+          pushField("Master_LFM_Max", master.LFM_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'ICP') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
+          pushField("Master_CCV_CCS_CVS_Value", master.CCV_CCS_CVS_Value);
+          pushField("Master_CCV_CCS_CVS_Min", master.CCV_CCS_CVS_Min);
+          pushField("Master_CCV_CCS_CVS_Max", master.CCV_CCS_CVS_Max);
+          pushField("Master_LFB_Value", master.LFB_Value);
+          pushField("Master_LFB_Min", master.LFB_Min);
+          pushField("Master_LFB_Max", master.LFB_Max);
+          pushField("Master_LFM_Value", master.LFM_Value);
+          pushField("Master_LFM_Min", master.LFM_Min);
+          pushField("Master_LFM_Max", master.LFM_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_R2", master.R2);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'Oil content') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_STD_Min", master.STD_Min);
+          pushField("Master_STD_Max", master.STD_Max);
+          pushField("Master_LFB_Value", master.LFB_Value);
+          pushField("Master_LFB_Min", master.LFB_Min);
+          pushField("Master_LFB_Max", master.LFB_Max);
+          pushField("Master_LFB_Diff_Min", master.LFB_Diff_Min);
+          pushField("Master_LFB_Diff_Max", master.LFB_Diff_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'TSS' || data.INSNAME === 'TDS') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
+          pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
+          pushField("Master_Diff_Min", master.Diff_Min);
+          pushField("Master_Diff_Max", master.Diff_Max);
+          pushField("Master_W2_W1_Min", master.W2_W1_Min);
+          pushField("Master_W2_W1_Max", master.W2_W1_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'pH') {
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Value_Max", master.QCS_Value_Max);
+          pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
+          pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
+          pushField("Master_Diff_Min", master.Diff_Min);
+          pushField("Master_Diff_Max", master.Diff_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Slope_Min", master.Slope_Min);
+          pushField("Master_Slope_Max", master.Slope_Max);
+          pushField("Master_Temp_Min", master.Temp_Min);
+          pushField("Master_Temp_Max", master.Temp_Max);
+          pushField("Master_Report_Digit", master.Report_Digit);
+        } else if (data.INSNAME === 'TF') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
+          pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'IC') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
+          pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_R2", master.R2);
+          pushField("Master_Report_Digit", master.Report_Digit);
+        } else if (data.INSNAME === 'Color') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
+          pushField("Master_CCV_CCS_CVS_Value", master.CCV_CCS_CVS_Value);
+          pushField("Master_CCV_CCS_CVS_Min", master.CCV_CCS_CVS_Min);
+          pushField("Master_CCV_CCS_CVS_Max", master.CCV_CCS_CVS_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_R2", master.R2);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'CN') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
+          pushField("Master_CCV_CCS_CVS_Value", master.CCV_CCS_CVS_Value);
+          pushField("Master_CCV_CCS_CVS_Min", master.CCV_CCS_CVS_Min);
+          pushField("Master_CCV_CCS_CVS_Max", master.CCV_CCS_CVS_Max);
+          pushField("Master_LFB_Value", master.LFB_Value);
+          pushField("Master_LFB_Min", master.LFB_Min);
+          pushField("Master_LFB_Max", master.LFB_Max);
+          pushField("Master_LFM_Value", master.LFM_Value);
+          pushField("Master_LFM_Min", master.LFM_Min);
+          pushField("Master_LFM_Max", master.LFM_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_R2", master.R2);
+          pushField("Master_Slope_Min", master.Slope_Min);
+          pushField("Master_Slope_Max", master.Slope_Max);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'Temp') {
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+        } else if (data.INSNAME === 'EC') {
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Value_Max", master.QCS_Value_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+        }
         // AllFields.push(`(${fields.join(', ')})`);
 
         // INSERT
@@ -2094,15 +2318,26 @@ router.post('/WWT/listInsertJob', async (req, res) => {
     const baseJobCode = req.body.JobCode;
     let allQueries = '';
     let itemStatusValue = '';
+    // ดึงข้อมูล Master จาก MongoDB
+    let wwtItemMaster = await mongodb.find(
+      "TALMASTER",
+      "WWTITEM",
+      { INSTRUMENTNAME: insName, activeid: "active_id" }
+    );
+    const masterData = wwtItemMaster || [];
 
     // STEP 1: UPDATE
     for (const data of dataRow) {
       let fields = [];
 
       function pushField(name, value) {
-        if (value !== '') {
-          const escapedValue = value.toString().replace(/'/g, "''");
-          fields.push(`[${name}] = N'${escapedValue}'`);
+        if (value !== '' && value !== null && value !== undefined) {
+          if (!isNaN(value)) {
+            fields.push(`[${name}] = ${value}`);
+          } else {
+            const escapedValue = value.toString().replace(/'/g, "''");
+            fields.push(`[${name}] = N'${escapedValue}'`);
+          }
         } else {
           fields.push(`[${name}] = NULL`);
         }
@@ -2191,11 +2426,23 @@ router.post('/WWT/listInsertJob', async (req, res) => {
       let insertQuery = '';
 
       for (const data of dataRow) {
+        let master = {};
+        if (insName === 'ICP') {
+          const matchedMaster = masterData.find(m => m.ITEMNAME === data.ITEMNAME);
+          master = matchedMaster || {};
+        } else {
+          master = masterData[0] || {};
+        }
+
         let fields = [];
         function pushField(name, value) {
-          if (value !== '') {
-            const escapedValue = value.toString().replace(/'/g, "''");
-            fields.push(`[${name}] = '${escapedValue}'`);
+          if (value !== '' && value !== null && value !== undefined) {
+            if (!isNaN(value)) {
+              fields.push(`[${name}] = ${value}`);
+            } else {
+              const escapedValue = value.toString().replace(/'/g, "''");
+              fields.push(`[${name}] = N'${escapedValue}'`);
+            }
           } else {
             fields.push(`[${name}] = NULL`);
           }
@@ -2214,6 +2461,146 @@ router.post('/WWT/listInsertJob', async (req, res) => {
           pushField("ItemName", data.ITEMNAME);
         }
 
+        if (data.INSNAME === 'BOD') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_Blank_Seed_Min", master.Blank_Seed_Min);
+          pushField("Master_Blank_Seed_Max", master.Blank_Seed_Max);
+          pushField("Master_Seed_Control_Min", master.Seed_Control_Min);
+          pushField("Master_Seed_Control_Max", master.Seed_Control_Max);
+          pushField("Master_GGA_Check_Min", master.GGA_Check_Min);
+          pushField("Master_GGA_Check_Max", master.GGA_Check_Max);
+          pushField("Master_DO5", master.DO5);
+          pushField("Master_DO0_DO5", master.DO0_DO5);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'COD') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_LFB_Value", master.LFB_Value);
+          pushField("Master_LFB_Min", master.LFB_Min);
+          pushField("Master_LFB_Max", master.LFB_Max);
+          pushField("Master_LFM_Value", master.LFM_Value);
+          pushField("Master_LFM_Min", master.LFM_Min);
+          pushField("Master_LFM_Max", master.LFM_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'ICP') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
+          pushField("Master_CCV_CCS_CVS_Value", master.CCV_CCS_CVS_Value);
+          pushField("Master_CCV_CCS_CVS_Min", master.CCV_CCS_CVS_Min);
+          pushField("Master_CCV_CCS_CVS_Max", master.CCV_CCS_CVS_Max);
+          pushField("Master_LFB_Value", master.LFB_Value);
+          pushField("Master_LFB_Min", master.LFB_Min);
+          pushField("Master_LFB_Max", master.LFB_Max);
+          pushField("Master_LFM_Value", master.LFM_Value);
+          pushField("Master_LFM_Min", master.LFM_Min);
+          pushField("Master_LFM_Max", master.LFM_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_R2", master.R2);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'Oil content') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_STD_Min", master.STD_Min);
+          pushField("Master_STD_Max", master.STD_Max);
+          pushField("Master_LFB_Value", master.LFB_Value);
+          pushField("Master_LFB_Min", master.LFB_Min);
+          pushField("Master_LFB_Max", master.LFB_Max);
+          pushField("Master_LFB_Diff_Min", master.LFB_Diff_Min);
+          pushField("Master_LFB_Diff_Max", master.LFB_Diff_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'TSS' || data.INSNAME === 'TDS') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
+          pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
+          pushField("Master_Diff_Min", master.Diff_Min);
+          pushField("Master_Diff_Max", master.Diff_Max);
+          pushField("Master_W2_W1_Min", master.W2_W1_Min);
+          pushField("Master_W2_W1_Max", master.W2_W1_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'pH') {
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Value_Max", master.QCS_Value_Max);
+          pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
+          pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
+          pushField("Master_Diff_Min", master.Diff_Min);
+          pushField("Master_Diff_Max", master.Diff_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Slope_Min", master.Slope_Min);
+          pushField("Master_Slope_Max", master.Slope_Max);
+          pushField("Master_Temp_Min", master.Temp_Min);
+          pushField("Master_Temp_Max", master.Temp_Max);
+          pushField("Master_Report_Digit", master.Report_Digit);
+        } else if (data.INSNAME === 'TF') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
+          pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'IC') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
+          pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_R2", master.R2);
+          pushField("Master_Report_Digit", master.Report_Digit);
+        } else if (data.INSNAME === 'Color') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
+          pushField("Master_CCV_CCS_CVS_Value", master.CCV_CCS_CVS_Value);
+          pushField("Master_CCV_CCS_CVS_Min", master.CCV_CCS_CVS_Min);
+          pushField("Master_CCV_CCS_CVS_Max", master.CCV_CCS_CVS_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_R2", master.R2);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'CN') {
+          pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Blank", master.Blank);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
+          pushField("Master_CCV_CCS_CVS_Value", master.CCV_CCS_CVS_Value);
+          pushField("Master_CCV_CCS_CVS_Min", master.CCV_CCS_CVS_Min);
+          pushField("Master_CCV_CCS_CVS_Max", master.CCV_CCS_CVS_Max);
+          pushField("Master_LFB_Value", master.LFB_Value);
+          pushField("Master_LFB_Min", master.LFB_Min);
+          pushField("Master_LFB_Max", master.LFB_Max);
+          pushField("Master_LFM_Value", master.LFM_Value);
+          pushField("Master_LFM_Min", master.LFM_Min);
+          pushField("Master_LFM_Max", master.LFM_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_R2", master.R2);
+          pushField("Master_Slope_Min", master.Slope_Min);
+          pushField("Master_Slope_Max", master.Slope_Max);
+          pushField("Master_Report_Digit", master.Report_Digit);
+          pushField("Master_Spec", master.Spec);
+        } else if (data.INSNAME === 'Temp') {
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+        } else if (data.INSNAME === 'EC') {
+          pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
+          pushField("Master_QCS_Value_Max", master.QCS_Value_Max);
+          pushField("Master_RPD", master.RPD);
+          pushField("Master_Report_Digit", master.Report_Digit);
+        }
         // AllFields.push(`(${fields.join(', ')})`);
 
         // INSERT
@@ -9559,12 +9946,11 @@ async function generateBaseJobCode(reqBranch, instrument) {
   const result = await mssql.qurey(`
     SELECT TOP 1 JobCode 
     FROM [WWT].[dbo].[${instrument}]
-    WHERE ReqBranch = '${reqBranch}'
-    AND JobCode LIKE 'JOB-ENV-${prefix}-${currentYear}%'
+    WHERE JobCode LIKE 'JOB-ENV-${prefix}-${currentYear}%'
     ORDER BY JobCode DESC
   `);
-  console.log(instrument);
-  console.log(reqBranch);
+  // console.log(instrument);
+  // console.log(reqBranch);
   let nextNumber = 1;
   if (result.recordset.length > 0) {
     const lastJobCode = result.recordset[0].JobCode; // JOB-ENV-ACB-25XXXX
