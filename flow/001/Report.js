@@ -115,10 +115,37 @@ router.post("/WWT/CreateReport", async (req, res) => {
       const format2Data = allReportData.filter(item => item.REPORTFORMAT === '2');
 
       // สร้าง 2 หน้า (หน้าแรก = format1, หน้าที่สอง = format2)
-      const pages = [
-        { data: format1Data, suffix: '', showLabNo: true, showBottomRemark: true, showRegistrationNo: true, showRemark: true, showSamplingPersonNo: true },
-        { data: format2Data, suffix: ' EX', showLabNo: false, showBottomRemark: false, showRegistrationNo: false, showRemark: false, showSamplingPersonNo: false }
-      ];
+      // const pages = [
+      //   { data: format1Data, suffix: '', showLabNo: true, showBottomRemark: true, showRegistrationNo: true, showRemark: true, showSamplingPersonNo: true },
+      //   { data: format2Data, suffix: ' EX', showLabNo: false, showBottomRemark: false, showRegistrationNo: false, showRemark: false, showSamplingPersonNo: false }
+      // ];
+
+      const pages = [];
+
+      // หน้าแรก (format1) — สร้างเสมอ
+      pages.push({
+        data: format1Data,
+        suffix: '',
+        showLabNo: true,
+        showBottomRemark: true,
+        showRegistrationNo: true,
+        showRemark: true,
+        showSamplingPersonNo: true
+      });
+
+      // หน้าที่สอง (format2) — สร้างเฉพาะเมื่อมีข้อมูล
+      if (format2Data && format2Data.length > 0) {
+        pages.push({
+          data: format2Data,
+          suffix: ' EX',
+          showLabNo: false,
+          showBottomRemark: false,
+          showRegistrationNo: false,
+          showRemark: false,
+          showSamplingPersonNo: false
+        });
+      }
+
 
       for (let pageIndex = 0; pageIndex < pages.length; pageIndex++) {
         const currentPage = pages[pageIndex];

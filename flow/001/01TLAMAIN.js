@@ -1906,7 +1906,7 @@ router.post('/WWT/getReqList', async (req, res) => {
   let query = `
   WITH R AS (
     SELECT  *,
-            ROW_NUMBER() OVER (PARTITION BY ReqNo ORDER BY BottleCode DESC) AS rn
+            ROW_NUMBER() OVER (PARTITION BY ReqNo ORDER BY BottleCode) AS rn
     FROM [WWT].[dbo].[Request]
     ${whereClause}
   )
@@ -9906,6 +9906,592 @@ router.post('/WWT/approveRejectReport', async (req, res) => {
   }
 });
 
+router.post('/WWT/cancelRequest', async (req, res) => {
+  console.log("--cancelRequest--");
+
+  try {
+    // let dataRow = JSON.parse(req.body.dataRow);
+    let ReqNo = req.body.ReqNo;
+    let allQueries = '';
+    let fields = [];
+
+    function pushField(name, value) {
+      if (value !== '') {
+        const escapedValue = value.toString().replace(/'/g, "''");
+        fields.push(`[${name}] = N'${escapedValue}'`);
+      } else {
+        fields.push(`[${name}] = NULL`);
+      }
+    }
+
+    pushField("ReqStatus", 'CANCEL');
+    pushField("SampleStatus", 'CANCEL');
+    pushField("ItemStatus", 'CANCEL');
+
+    let query = `
+      UPDATE [WWT].[dbo].[Request]
+      SET ${fields.join(',\n')}
+      WHERE ReqNo = '${ReqNo}';
+      `;
+    allQueries += query + '\n';
+
+    let db = await mssql.qurey(allQueries);
+    // console.log(allQueries);
+    // STEP 2: CREATE DELETE QUERY
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      return res.status(400).json('ไม่พบข้อมูล');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/cancelSample', async (req, res) => {
+  console.log("--cancelSample--");
+
+  try {
+    // let dataRow = JSON.parse(req.body.dataRow);
+    let SampleCode = req.body.SampleCode;
+    let ReqNo = SampleCode.slice(0, -3);
+    let allQueries = '';
+    let fields = [];
+
+    function pushField(name, value) {
+      if (value !== '') {
+        const escapedValue = value.toString().replace(/'/g, "''");
+        fields.push(`[${name}] = N'${escapedValue}'`);
+      } else {
+        fields.push(`[${name}] = NULL`);
+      }
+    }
+
+    pushField("SampleStatus", 'CANCEL');
+    pushField("ItemStatus", 'CANCEL');
+
+    let query = `
+      UPDATE [WWT].[dbo].[Request]
+      SET ${fields.join(',\n')}
+      WHERE SampleCode = '${SampleCode}';
+      `;
+    allQueries += query + '\n';
+
+    let db = await mssql.qurey(allQueries);
+    // console.log(allQueries);
+
+    const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'CANCEL' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+    const reqResult = await mssql.qurey(checkReqNoQuery);
+    const totalReq = reqResult.recordset[0].Total;
+    const sentReq = reqResult.recordset[0].Sent;
+
+    if (totalReq > 0 && totalReq === sentReq) {
+      const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'CANCEL'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+      await mssql.qurey(updateReqStatusQuery);
+      // console.log("Updated ReqStatus → WAIT REPORT");
+    }
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      return res.status(400).json('ไม่พบข้อมูล');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/cancelItem', async (req, res) => {
+  console.log("--cancelItem--");
+
+  try {
+    // let dataRow = JSON.parse(req.body.dataRow);
+    let dataRow = JSON.parse(req.body.dataRow);
+    let ReqNo = dataRow.REQNO;
+    let sampleCode = dataRow.SAMPLECODE;
+    let allQueries = '';
+    let fields = [];
+
+    function pushField(name, value) {
+      if (value !== '') {
+        const escapedValue = value.toString().replace(/'/g, "''");
+        fields.push(`[${name}] = N'${escapedValue}'`);
+      } else {
+        fields.push(`[${name}] = NULL`);
+      }
+    }
+
+    pushField("ItemStatus", 'CANCEL');
+
+    let query = `
+      UPDATE [WWT].[dbo].[Request]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${dataRow.ID}';
+      `;
+    allQueries += query + '\n';
+
+    let db = await mssql.qurey(allQueries);
+    // console.log(allQueries);
+
+    const checkItemCodeQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN ItemStatus = 'CANCEL' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE SampleCode = '${sampleCode}';
+      `;
+
+    const result = await mssql.qurey(checkItemCodeQuery);
+    const total = result.recordset[0].Total;
+    const sent = result.recordset[0].Sent;
+
+    if (total > 0 && total === sent) {
+      const updateSampleStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET SampleStatus = 'CANCEL'
+        WHERE SampleCode = '${sampleCode}';
+        `;
+      await mssql.qurey(updateSampleStatusQuery);
+      // console.log("Updated SampleStatus → WAIT REPORT");
+    }
+
+    // ---------------------------------------------------
+    // 3) เช็คว่า ReqNo ทั้งหมด WAIT REPORT ครบรึยัง
+    // ---------------------------------------------------
+
+    const checkReqNoQuery = `
+      SELECT COUNT(*) AS Total,
+             SUM(CASE WHEN SampleStatus = 'CANCEL' THEN 1 ELSE 0 END) AS Sent
+      FROM [WWT].[dbo].[Request]
+      WHERE ReqNo = '${ReqNo}';
+      `;
+
+    const reqResult = await mssql.qurey(checkReqNoQuery);
+    const totalReq = reqResult.recordset[0].Total;
+    const sentReq = reqResult.recordset[0].Sent;
+
+    if (totalReq > 0 && totalReq === sentReq) {
+      const updateReqStatusQuery = `
+        UPDATE [WWT].[dbo].[Request]
+        SET ReqStatus = 'CANCEL'
+        WHERE ReqNo = '${ReqNo}';
+        `;
+      await mssql.qurey(updateReqStatusQuery);
+      // console.log("Updated ReqStatus → WAIT REPORT");
+    }
+
+    if (db["rowsAffected"][0] > 0) {
+      console.log("Update Success");
+      return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
+    } else {
+      return res.status(400).json('ไม่พบข้อมูล');
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+  }
+});
+
+router.post('/WWT/ItemByDueDate', async (req, res) => {
+  //-------------------------------------
+  console.log("--ItemByDueDate--");
+  //-------------------------------------
+  // console.log(req.body);
+  let query = `SELECT 
+    AnalysisDue,
+    ReqBranch,
+    COUNT(CASE WHEN ItemStatus = 'RECEIVE SAMPLE' THEN 1 END) AS RECEIVE,
+    COUNT(CASE WHEN ItemStatus = 'LIST ITEM' THEN 1 END) AS WAITANALYSIS,
+    COUNT(CASE WHEN ItemStatus = 'RECHECK ITEM' THEN 1 END) AS WAITLISTRECHECK,
+    COUNT(CASE WHEN ItemStatus = 'LIST RECHECK' THEN 1 END) AS WAITRECHECK,
+    COUNT(CASE WHEN ItemStatus = 'FINISH ITEM' THEN 1 END) AS WAITAPPROVEJOB,
+    COUNT(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 END) AS WAITAPPROVEREPORT
+    FROM [WWT].[dbo].[Request]
+    WHERE ReqBranch IN ('TPK BANGPOO LAB', 'TPK HES LAB')
+    AND AnalysisDue BETWEEN 
+      DATEADD(day,-45, CONVERT(date, GETDATE())) 
+      AND DATEADD(day, 30, CONVERT(date, GETDATE()))
+    GROUP BY AnalysisDue, ReqBranch
+    ORDER BY AnalysisDue ASC;
+  `;
+  let db = await mssql.qurey(query);
+  let result = {
+    Bangpoo: [],
+    Rayong: [],
+  };
+
+  for (const row of db["recordset"]) {
+    const item = {
+      DUEDATE: row.AnalysisDue,
+      RECEIVE: row.RECEIVE,
+      WAITANALYSIS: row.WAITANALYSIS,
+      WAITLISTRECHECK: row.WAITLISTRECHECK,
+      WAITRECHECK: row.WAITRECHECK,
+      WAITAPPROVEJOB: row.WAITAPPROVEJOB,
+      WAITAPPROVEREPORT: row.WAITAPPROVEREPORT,
+    };
+
+    if (row.ReqBranch === 'TPK BANGPOO LAB') {
+      result.Bangpoo.push(item);
+    }
+
+    if (row.ReqBranch === 'TPK HES LAB') {
+      result.Rayong.push(item);
+    }
+  }
+
+  if (db["recordset"].length > 0) {
+    // console.log('200');
+    return res.status(200).json(result);
+  } else {
+    // console.log('400');
+    return res.status(400).json('ไม่พบข้อมูล');
+  }
+  //-------------------------------------
+
+});
+
+router.post('/WWT/OutOfDue', async (req, res) => {
+  console.log("--OutOfDue--");
+
+  const { year } = req.body; // รับปีจากหน้าบ้าน เช่น 2026
+  const targetYear = year || new Date().getFullYear();
+
+  // Load holidays ถ้ายังไม่ได้ load
+  if (!holidays) {
+    await loadHolidays();
+  }
+
+  try {
+    // Query ข้อมูลของปีที่ต้องการ
+    let query = `
+      SELECT 
+        ReqNo,
+        ReqBranch,
+        ReqType,
+        ReceivedDate,
+        AnalysisDue,
+        ReportApproveDate
+      FROM [WWT].[dbo].[Request]
+      WHERE YEAR(ReceivedDate) = ${year}
+      ORDER BY ReceivedDate
+    `;
+    // console.log(query);
+    let db = await mssql.qurey(query, { year: targetYear });
+    // console.log(db);
+    // โครงสร้างผลลัพธ์
+    const result = {
+      // year: targetYear,
+      Bangpoo: {
+        Routine: [],
+        ServiceLab: [],
+        Special: []
+      },
+      Rayong: {
+        Routine: [],
+        ServiceLab: [],
+        Special: []
+      }
+    };
+
+    // สร้างโครงสร้างข้อมูล 12 เดือน
+    for (let month = 1; month <= 12; month++) {
+      // Bangpoo
+      result.Bangpoo.Routine.push({
+        month: month,
+        outOfDue: 0,
+        outOfDueCount: 0,
+        requestTotal: 0,
+        workingDay: 0,
+        workingDayTotal: 0
+      });
+      result.Bangpoo.ServiceLab.push({
+        month: month,
+        outOfDue: 0,
+        outOfDueCount: 0,
+        requestTotal: 0,
+        workingDay: 0,
+        workingDayTotal: 0
+      });
+      result.Bangpoo.Special.push({
+        month: month,
+        outOfDue: 0,
+        outOfDueCount: 0,
+        requestTotal: 0,
+        workingDay: 0,
+        workingDayTotal: 0
+      });
+
+      // Rayong
+      result.Rayong.Routine.push({
+        month: month,
+        outOfDue: 0,
+        outOfDueCount: 0,
+        requestTotal: 0,
+        workingDay: 0,
+        workingDayTotal: 0
+      });
+      result.Rayong.ServiceLab.push({
+        month: month,
+        outOfDue: 0,
+        outOfDueCount: 0,
+        requestTotal: 0,
+        workingDay: 0,
+        workingDayTotal: 0
+      });
+      result.Rayong.Special.push({
+        month: month,
+        outOfDue: 0,
+        outOfDueCount: 0,
+        requestTotal: 0,
+        workingDay: 0,
+        workingDayTotal: 0
+      });
+    }
+
+    // ประมวลผลข้อมูล
+    const processedReqNos = new Set(); // เก็บ ReqNo ที่ประมวลผลแล้ว
+
+    const rows = Array.isArray(db.recordset) ? db.recordset : [];
+    for (const row of rows) {
+      if (!row.ReceivedDate) continue;
+
+      const receivedMonth = new Date(row.ReceivedDate).getMonth(); // 0-11
+      const monthIndex = receivedMonth; // ใช้เป็น index (0-11)
+
+      // กำหนด Branch
+      let branch = null;
+      if (row.ReqBranch === 'TPK BANGPOO LAB') {
+        branch = 'Bangpoo';
+      } else if (row.ReqBranch === 'TPK HES LAB') {
+        branch = 'Rayong';
+      }
+
+      if (!branch) continue;
+
+      // กำหนด Type
+      let type = null;
+      if (row.ReqType === 'Routine') {
+        type = 'Routine';
+      } else if (row.ReqType === 'Service lab' || row.ReqType === 'ServiceLab') {
+        type = 'ServiceLab';
+      } else if (row.ReqType === 'Special') {
+        type = 'Special';
+      }
+
+      if (!type) continue;
+
+      // อ้างอิงข้อมูลเดือน
+      const monthData = result[branch][type][monthIndex];
+
+      // นับ Request Total (ไม่ซ้ำ ReqNo)
+      const reqKey = `${branch}-${type}-${monthIndex}-${row.ReqNo}`;
+      if (!processedReqNos.has(reqKey)) {
+        monthData.requestTotal++;
+        processedReqNos.add(reqKey);
+      }
+
+      // คำนวณ Out of Due
+      if (row.AnalysisDue && row.ReportApproveDate) {
+        const outOfDueDays = calculateOutOfDue(row.AnalysisDue, row.ReportApproveDate);
+        if (outOfDueDays > 0) {
+          monthData.outOfDue += outOfDueDays;
+          monthData.outOfDueCount++;
+        }
+      }
+
+      // คำนวณ Working Day
+      if (row.ReceivedDate && row.ReportApproveDate) {
+        const workingDays = calculateWorkingDays(
+          row.ReceivedDate,
+          row.ReportApproveDate,
+          holidays
+        );
+        monthData.workingDay += workingDays;
+        monthData.workingDayTotal++;
+      }
+    }
+
+    // คำนวณค่าเฉลี่ย
+    for (const branch of ['Bangpoo', 'Rayong']) {
+      for (const type of ['Routine', 'ServiceLab', 'Special']) {
+        for (let i = 0; i < 12; i++) {
+          const monthData = result[branch][type][i];
+
+          // เฉลี่ย Out of Due
+          if (monthData.outOfDueCount > 0) {
+            monthData.outOfDue = Math.round(monthData.outOfDue / monthData.outOfDueCount);
+          }
+
+          // เฉลี่ย Working Day
+          if (monthData.workingDayTotal > 0) {
+            monthData.workingDay = Math.round(
+              (monthData.workingDay / monthData.workingDayTotal) * 100
+            ) / 100; // ทศนิยม 2 ตำแหน่ง
+          }
+
+          // ลบ field ที่ใช้ในการคำนวณออก
+          delete monthData.outOfDueCount;
+          delete monthData.workingDayTotal;
+        }
+      }
+    }
+
+    return res.status(200).json(result);
+
+  } catch (error) {
+    console.error('Error in OutOfDue API:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+router.post('/WWT/ItemByMonth', async (req, res) => {
+  const { year, month } = req.body;
+  const targetYear = year || new Date().getFullYear();
+  const targetMonth = month;
+
+  try {
+    /* -------------------- 1. MASTER -------------------- */
+
+    const custMasters = await mongodb.find(
+      "TALMASTER",
+      "CUSTNAME",
+      { activeid: "active_id" }
+    );
+    const allCustList = custMasters.map(x => x.CUSTNAME);
+
+    const routineCustList = [
+      'Environment TP/SEW Rayong',
+      'Environment Gateway',
+      'Environment soi 12',
+      'Environment soi 8'
+    ];
+
+    const nonRoutineCustList = allCustList.filter(
+      c => !routineCustList.includes(c)
+    );
+
+    const itemMasters = await mongodb.find(
+      "TALMASTER",
+      "ITEMNAME",
+      { activeid: "active_id" }
+    );
+    const itemList = itemMasters.map(x => x.ITEMNAME);
+
+    const plantList = ['Bangpoo', 'Rayong'];
+    const reqTypeList = ['Routine', 'Service lab', 'Special'];
+
+    /* -------------------- 2. สร้างโครงสร้าง output -------------------- */
+
+    const output = {};
+
+    for (const plant of plantList) {
+      output[plant] = {};
+
+      for (const reqType of reqTypeList) {
+        output[plant][reqType] = {};
+
+        const custList =
+          reqType === 'Routine'
+            ? routineCustList
+            : nonRoutineCustList;
+
+        for (const custName of custList) {
+          output[plant][reqType][custName] = {
+            rep1: 0,
+            rep2: 0,
+            Report: 0
+          };
+
+          for (const itemName of itemList) {
+            output[plant][reqType][custName][itemName] = 0;
+          }
+        }
+      }
+    }
+
+    /* -------------------- 3. Query SQL -------------------- */
+
+    const query = `
+      SELECT *
+      FROM [WWT].[dbo].[Request]
+      WHERE
+        YEAR(ReceivedDate) = ${targetYear}
+        AND MONTH(ReceivedDate) = ${targetMonth}
+        AND ItemStatus NOT IN ('REJECT', 'CANCEL')
+      ORDER BY ReceivedDate
+    `;
+    // console.log(query);
+
+    const result = await mssql.qurey(query);
+
+    /* -------------------- 4. ++ จากข้อมูลจริง -------------------- */
+
+    for (let i = 0; i < result.recordset.length; i++) {
+      const row = result.recordset[i];
+
+      const plant =
+        row.ReqCode === 'ACB' ? 'Bangpoo' :
+          row.ReqCode === 'ACR' ? 'Rayong' : null;
+      if (!plant) continue;
+
+      const reqType = row.ReqType;
+      const custName = row.CustName;
+      const itemName = row.ItemName;
+      // console.log(plant, reqType, custName, itemName);
+
+      // กันข้อมูลที่ไม่อยู่ใน master structure
+      // if (!output[plant]?.[reqType]?.[custName]) continue;
+      // if (!output[plant][reqType][custName][itemName]) continue;
+
+      // ++ item
+      output[plant][reqType][custName][itemName]++;
+      // console.log(output[plant][reqType][custName][itemName]);
+
+      // ++ rep1 / rep2
+      if (row.ReportFormat == '1') {
+        output[plant][reqType][custName].rep1++;
+      } else {
+        output[plant][reqType][custName].rep2++;
+      }
+
+      // คำนวณ Report (rep1 + rep2 แยกกัน ทุก 15 = 1)
+      const rep1 = output[plant][reqType][custName].rep1;
+      const rep2 = output[plant][reqType][custName].rep2;
+
+      output[plant][reqType][custName].Report =
+        Math.ceil(rep1 / 15) + Math.ceil(rep2 / 15);
+    }
+
+    return res.status(200).json(output);
+
+  } catch (error) {
+    console.error('Error in ItemByMonth API:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+
 async function generateBaseReqNo(reqBranch) {
   const currentYear = new Date().getFullYear().toString().slice(-2);
   let prefix = 'ACB';
@@ -10025,6 +10611,49 @@ async function calculateAnalysisDue(startDate, addDays) {
 
   output['AnalysisDue'] = formatDate(date);
   return output;
+}
+
+function calculateWorkingDays(startDate, endDate, holidays) {
+  if (!startDate || !endDate) return 0;
+
+  let start = new Date(startDate);
+  let end = new Date(endDate);
+
+  // ถ้าวันสิ้นสุดน้อยกว่าวันเริ่มต้น
+  if (end < start) return 0;
+
+  let workingDays = 0;
+  let currentDate = new Date(start);
+
+  while (currentDate <= end) {
+    const dayOfWeek = currentDate.getDay();
+    const dateStr = currentDate.toISOString().split('T')[0];
+
+    // นับเฉพาะวันจันทร์-ศุกร์ และไม่ใช่วันหยุด
+    if (dayOfWeek !== 0 && dayOfWeek !== 6 && !holidays.has(dateStr)) {
+      workingDays++;
+    }
+
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return workingDays;
+}
+
+function calculateOutOfDue(analysisDue, reportApproveDate) {
+  if (!analysisDue || !reportApproveDate) return 0;
+
+  const due = new Date(analysisDue);
+  const approved = new Date(reportApproveDate);
+
+  // ถ้า approved มากกว่า due แสดงว่าเกินกำหนด
+  if (approved > due) {
+    const diffTime = Math.abs(approved - due);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  }
+
+  return 0;
 }
 
 let holidays = null;
