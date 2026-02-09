@@ -393,10 +393,9 @@ router.post("/WWT/CreateReport", async (req, res) => {
               );
               let showStar = false;
 
-              if (approver) {
+              if (approver && approver.Name) {
                 const approverBranch = approver.Branch;
                 const reportBranch = branch;
-
                 // เงื่อนไขเพิ่มดอกจันทร์
                 if (
                   (approverBranch === 'BANGPOO' && reportBranch === 'TPK HES LAB') ||

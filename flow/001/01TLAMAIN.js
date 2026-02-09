@@ -1508,7 +1508,7 @@ router.post('/WWT/receiveSample', async (req, res) => {
     // console.log("Checking SampleCode:", sampleCode);
     const checkQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'RECEIVE SAMPLE' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('RECEIVE SAMPLE', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
     `;
@@ -1533,7 +1533,7 @@ router.post('/WWT/receiveSample', async (req, res) => {
     // console.log("Checking ReqNo:", ReqNo);
     const checkSampleQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'RECEIVE SAMPLE' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('RECEIVE SAMPLE', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
     `;
@@ -2043,7 +2043,7 @@ router.post('/WWT/listNewJob', async (req, res) => {
       // console.log("Checking SampleCode:", sampleCode);
       const checkQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus IN ('LIST ITEM', 'LIST RECHECK', 'FINISH ITEM', 'FINISH RECHECK', 'APPROVE ITEM') THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('LIST ITEM', 'LIST RECHECK', 'FINISH ITEM', 'FINISH RECHECK', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -2068,7 +2068,7 @@ router.post('/WWT/listNewJob', async (req, res) => {
       // console.log("Checking ReqNo:", ReqNo);
       const checkSampleQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT ANALYSIS' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT ANALYSIS', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -2371,7 +2371,7 @@ router.post('/WWT/listInsertJob', async (req, res) => {
       // console.log("Checking SampleCode:", sampleCode);
       const checkQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus IN ('LIST ITEM', 'LIST RECHECK', 'FINISH ITEM', 'FINISH RECHECK', 'APPROVE ITEM') THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('LIST ITEM', 'LIST RECHECK', 'FINISH ITEM', 'FINISH RECHECK', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -2396,7 +2396,7 @@ router.post('/WWT/listInsertJob', async (req, res) => {
       // console.log("Checking ReqNo:", ReqNo);
       const checkSampleQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT ANALYSIS' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT ANALYSIS', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -2842,6 +2842,8 @@ router.post('/WWT/returnJob', async (req, res) => {
       for (const data of buffer) {
         let fields = [];
         let itemStatus = data.ItemStatus;
+        let Branch = data.ReqBranch;
+        let reqCode = '';
 
         function pushField(name, value) {
           if (value !== '') {
@@ -2860,7 +2862,14 @@ router.post('/WWT/returnJob', async (req, res) => {
           itemStatusValue = 'RECEIVE SAMPLE';
         }
 
+        if (Branch === 'TPK BANGPOO LAB') {
+          reqCode = 'ACB';
+        } else if (Branch === 'TPK HES LAB') {
+          reqCode = 'ACR';
+        }
+
         pushField("JobCode", '');
+        pushField("ReqCode", reqCode);
         pushField("UserListJob", '');
         pushField("ListJobDate", '');
         pushField("UserAnalysis", '');
@@ -2942,6 +2951,9 @@ router.post('/WWT/returnRequest', async (req, res) => {
       let buffer = db["recordsets"][0];
       for (const data of buffer) {
         let itemStatus = data.ItemStatus;
+        let Branch = data.ReqBranch;
+        let reqCode = '';
+
         if (itemStatus === 'LIST ITEM') {
           itemStatusValue = 'RECEIVE SAMPLE';
         } else if (itemStatus === 'LIST RECHECK') {
@@ -2950,7 +2962,14 @@ router.post('/WWT/returnRequest', async (req, res) => {
           itemStatusValue = 'RECEIVE SAMPLE';
         }
 
+        if (Branch === 'TPK BANGPOO LAB') {
+          reqCode = 'ACB';
+        } else if (Branch === 'TPK HES LAB') {
+          reqCode = 'ACR';
+        }
+
         pushField("JobCode", '');
+        pushField("ReqCode", reqCode);
         pushField("UserListJob", '');
         pushField("ListJobDate", '');
         pushField("UserAnalysis", '');
@@ -6566,7 +6585,7 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -6591,7 +6610,7 @@ router.post('/WWT/approveRejectBOD', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -6755,7 +6774,7 @@ router.post('/WWT/approveRejectPH', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -6780,7 +6799,7 @@ router.post('/WWT/approveRejectPH', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -6944,7 +6963,7 @@ router.post('/WWT/approveRejectTF', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -6969,7 +6988,7 @@ router.post('/WWT/approveRejectTF', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -7152,7 +7171,7 @@ router.post('/WWT/approveRejectTDS', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -7177,7 +7196,7 @@ router.post('/WWT/approveRejectTDS', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -7360,7 +7379,7 @@ router.post('/WWT/approveRejectTSS', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -7385,7 +7404,7 @@ router.post('/WWT/approveRejectTSS', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -7568,7 +7587,7 @@ router.post('/WWT/approveRejectCOD', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -7593,7 +7612,7 @@ router.post('/WWT/approveRejectCOD', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -8265,7 +8284,7 @@ router.post('/WWT/approveRejectICP', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -8290,7 +8309,7 @@ router.post('/WWT/approveRejectICP', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -8455,7 +8474,7 @@ router.post('/WWT/approveRejectOil', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -8480,7 +8499,7 @@ router.post('/WWT/approveRejectOil', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -8663,7 +8682,7 @@ router.post('/WWT/approveRejectColor', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -8688,7 +8707,7 @@ router.post('/WWT/approveRejectColor', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -8862,7 +8881,7 @@ router.post('/WWT/approveRejectEC', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -8887,7 +8906,7 @@ router.post('/WWT/approveRejectEC', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -9061,7 +9080,7 @@ router.post('/WWT/approveRejectTEMP', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -9086,7 +9105,7 @@ router.post('/WWT/approveRejectTEMP', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -9250,7 +9269,7 @@ router.post('/WWT/approveRejectIC', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -9275,7 +9294,7 @@ router.post('/WWT/approveRejectIC', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -9452,7 +9471,7 @@ router.post('/WWT/approveRejectCN', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'APPROVE ITEM' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('APPROVE ITEM', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -9477,7 +9496,7 @@ router.post('/WWT/approveRejectCN', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'WAIT REPORT' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('WAIT REPORT', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
@@ -9848,7 +9867,7 @@ router.post('/WWT/approveRejectReport', async (req, res) => {
 
       const checkSampleCodeQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN ItemStatus = 'COMPLETE' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN ItemStatus IN ('COMPLETE', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE SampleCode = '${sampleCode}';
       `;
@@ -9873,7 +9892,7 @@ router.post('/WWT/approveRejectReport', async (req, res) => {
 
       const checkReqNoQuery = `
       SELECT COUNT(*) AS Total,
-             SUM(CASE WHEN SampleStatus = 'COMPLETE' THEN 1 ELSE 0 END) AS Sent
+             SUM(CASE WHEN SampleStatus IN ('COMPLETE', 'CANCEL', 'REJECT') THEN 1 ELSE 0 END) AS Sent
       FROM [WWT].[dbo].[Request]
       WHERE ReqNo = '${ReqNo}';
       `;
