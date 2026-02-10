@@ -3110,6 +3110,22 @@ router.post('/WWT/TempSaveBOD', async (req, res) => {
       pushField("Calculate_4", data.CALCULATE_4);
       pushField("Result_4", data.RESULT_4);
       pushField("RPD_4", data.RPD_4);
+      pushField("Seed_5", data.SEED_5);
+      pushField("Sample_5", data.SAMPLE_5);
+      pushField("DO0_5", data.DO0_5);
+      pushField("DO5_5", data.DO5_5);
+      pushField("DO0_DO5_5", data.DO0_DO5_5);
+      pushField("Calculate_5", data.CALCULATE_5);
+      pushField("Result_5", data.RESULT_5);
+      pushField("RPD_5", data.RPD_5);
+      pushField("Seed_6", data.SEED_6);
+      pushField("Sample_6", data.SAMPLE_6);
+      pushField("DO0_6", data.DO0_6);
+      pushField("DO5_6", data.DO5_6);
+      pushField("DO0_DO5_6", data.DO0_DO5_6);
+      pushField("Calculate_6", data.CALCULATE_6);
+      pushField("Result_6", data.RESULT_6);
+      pushField("RPD_6", data.RPD_6);
       pushField("Remark_Job", data.REMARKJOB);
 
       let query = `
@@ -4516,6 +4532,22 @@ router.post('/WWT/SaveBOD', async (req, res) => {
       pushField("Calculate_4", data.CALCULATE_4);
       pushField("Result_4", data.RESULT_4);
       pushField("RPD_4", data.RPD_4);
+      pushField("Seed_5", data.SEED_5);
+      pushField("Sample_5", data.SAMPLE_5);
+      pushField("DO0_5", data.DO0_5);
+      pushField("DO5_5", data.DO5_5);
+      pushField("DO0_DO5_5", data.DO0_DO5_5);
+      pushField("Calculate_5", data.CALCULATE_5);
+      pushField("Result_5", data.RESULT_5);
+      pushField("RPD_5", data.RPD_5);
+      pushField("Seed_6", data.SEED_6);
+      pushField("Sample_6", data.SAMPLE_6);
+      pushField("DO0_6", data.DO0_6);
+      pushField("DO5_6", data.DO5_6);
+      pushField("DO0_DO5_6", data.DO0_DO5_6);
+      pushField("Calculate_6", data.CALCULATE_6);
+      pushField("Result_6", data.RESULT_6);
+      pushField("RPD_6", data.RPD_6);
       pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
