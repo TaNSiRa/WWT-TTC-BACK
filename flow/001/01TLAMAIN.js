@@ -96,16 +96,16 @@ router.post('/TLA/SETCUSTNAME', async (req, res) => {
   //-------------------------------------
 
 
-  if (input['CUSTNAME'] != undefined && input['masterID'] != undefined && input['ADDRESS'] != undefined && input['DEFAULTPERSON'] != undefined) {
+  if (input['CUSTNAME'] != undefined && input['CUSTSHORT'] != undefined && input['masterID'] != undefined && input['ADDRESS'] != undefined && input['DEFAULTPERSON'] != undefined) {
     if (input['masterID'] === '') {
       let UID = `CUSTNAME-${Date.now()}${makeid(15)}`
       let indata = {
         "CUSTNAME": input['CUSTNAME'],
+        "CUSTSHORT": input['CUSTSHORT'],
         "ADDRESS": input['ADDRESS'],
         "DEFAULTPERSON": input['DEFAULTPERSON'],
         "masterID": UID,
         "activeid": "active_id"
-
       }
       let ins = await mongodb.insertMany("TALMASTER", "CUSTNAME", [
         indata
@@ -113,7 +113,7 @@ router.post('/TLA/SETCUSTNAME', async (req, res) => {
     } else {
       let find01 = await mongodb.find("TALMASTER", "CUSTNAME", { "masterID": input[`masterID`] });
       if (find01.length > 0) {
-        let letsetdata = { "CUSTNAME": input['CUSTNAME'], "ADDRESS": input['ADDRESS'], "DEFAULTPERSON": input['DEFAULTPERSON'] }
+        let letsetdata = { "CUSTNAME": input['CUSTNAME'], "CUSTSHORT": input['CUSTSHORT'], "ADDRESS": input['ADDRESS'], "DEFAULTPERSON": input['DEFAULTPERSON'] }
         let update01 = await mongodb.update("TALMASTER", "CUSTNAME", { 'masterID': input[`masterID`] }, { "$set": letsetdata });
         output = "OK";
       }
@@ -1234,8 +1234,22 @@ router.post('/WWT/CreateRequest', async (req, res) => {
   for (const dataRow of dataRows) {
     const sampNoStr = dataRow.SampNo.toString().padStart(2, '0');
     const sampleCode = `${baseReqNo}/${sampNoStr}`;
-    const bottleStr = dataRow.BottleNo.toString().padStart(2, '0');
-    const bottleCode = `${baseReqNo}/${sampNoStr}/${bottleStr}`;
+
+    let bottleStr;
+    let bottleCode;
+
+    const bottleNumber = Number(dataRow.BottleNo);
+    if (!isNaN(bottleNumber)) {
+      // ✅ เป็นตัวเลข
+      bottleStr = bottleNumber.toString().padStart(2, '0');
+    } else {
+      // ✅ ไม่ใช่ตัวเลข → ใช้ค่าเดิมเป็น string
+      bottleStr = dataRow.BottleNo?.toString() || null;
+    }
+
+    bottleCode = bottleStr
+      ? `${baseReqNo}/${sampNoStr}/${bottleStr}`
+      : null;
 
     const matchedItem = itemMap[dataRow.ItemName];
     if (matchedItem) {
@@ -1247,6 +1261,8 @@ router.post('/WWT/CreateRequest', async (req, res) => {
     const matchedPreserved = preservedMap[dataRow.BottleNo];
     if (matchedPreserved) {
       dataRow.Preserved = matchedPreserved.PRESERVED || '';
+    } else {
+      dataRow.Preserved = '-';
     }
 
     let valueFields = [];
@@ -1271,7 +1287,6 @@ router.post('/WWT/CreateRequest', async (req, res) => {
       }
     }
 
-
     pushValue("ReqNo", baseReqNo);
     pushValue("SampleCode", sampleCode);
     pushValue("BottleCode", bottleCode);
@@ -1283,11 +1298,12 @@ router.post('/WWT/CreateRequest', async (req, res) => {
     pushValue("ReqDate", dataRow.ReqDate);
     pushValue("ReqUser", dataRow.ReqUser);
     pushValue("CustName", dataRow.CustName);
+    pushValue("CustShort", dataRow.CustShort);
     pushValue("SampPerson", dataRow.SampPerson);
     pushValue("SampDate", dataRow.SampDate);
     pushValue("SampNo", dataRow.SampNo);
     pushValue("SampName", dataRow.SampName);
-    pushValue("BottleNo", dataRow.BottleNo);
+    pushValue("BottleNo", bottleStr);
     pushValue("ItemNo", dataRow.ItemNo);
     pushValue("InsName", dataRow.InsName);
     pushValue("ItemName", dataRow.ItemName);
@@ -1304,10 +1320,9 @@ router.post('/WWT/CreateRequest', async (req, res) => {
     allValueStrings.push(`(${valueFields.join(', ')})`);
   }
 
-
   let columns = [
     'ReqNo', 'SampleCode', 'BottleCode', 'ReqCode', 'Type', 'ReqType', 'ReqBranch', 'ReqSection', 'ReqDate', 'ReqUser',
-    'CustName', 'SampPerson', 'SampDate', 'SampNo', 'SampName', 'BottleNo',
+    'CustName', 'CustShort', 'SampPerson', 'SampDate', 'SampNo', 'SampName', 'BottleNo',
     'ItemNo', 'InsName', 'ItemName', 'ControlRange', 'Unit', 'Method', 'Preserved', 'ReportFormat', 'RemarkSample',
     'ReqStatus', 'SampleStatus', 'ItemStatus'
   ];
@@ -1321,7 +1336,6 @@ router.post('/WWT/CreateRequest', async (req, res) => {
   `;
 
   try {
-    // console.log(query);
     const db = await mssql.qurey(query);
     // console.log(db);
     if (db.rowsAffected[0] === 0) {
@@ -1687,13 +1701,20 @@ router.post('/WWT/editDueDate', async (req, res) => {
   console.log("--editDueDate--");
   //-------------------------------------
   // console.log(req.body);
-  // console.log(req.body.RemarkReject);
+  let dataRow = JSON.parse(req.body.dataRow);
+  // console.log(dataRow);
   const now = ISOToLocal(new Date());
-
+  let allQueries = '';
   let fields = [];
+
   function pushField(name, value) {
-    if (value !== '') {
-      fields.push(`[${name}] = '${value}'`);
+    if (value !== '' && value !== null && value !== undefined) {
+      if (!isNaN(value)) {
+        fields.push(`[${name}] = ${value}`);
+      } else {
+        const escapedValue = value.toString().replace(/'/g, "''");
+        fields.push(`[${name}] = N'${escapedValue}'`);
+      }
     } else {
       fields.push(`[${name}] = NULL`);
     }
@@ -1713,6 +1734,20 @@ router.post('/WWT/editDueDate', async (req, res) => {
   // console.log(db);
   if (db["rowsAffected"][0] > 0) {
     console.log("Update Success");
+    for (const data of dataRow) {
+      fields = [];
+      // console.log(req.body.dueDate);
+      pushField("AnalysisDue", req.body.dueDate);
+
+      let query = `
+      UPDATE [WWT].[dbo].[${data.INSNAME}]
+      SET ${fields.join(',\n')}
+      WHERE ID = '${data.ID}';
+    `;
+      allQueries += query + '\n';
+    }
+    await mssql.qurey(allQueries);
+    // console.log(allQueries);
     return res.status(200).json('อัปเดทข้อมูลสำเร็จ');
     // return res.status(400).json('อัปเดทข้อมูลสำเร็จ');
   } else {

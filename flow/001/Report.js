@@ -501,7 +501,7 @@ router.post("/WWT/CreateReport", async (req, res) => {
 
           doc.fontSize(14).font('AngsanaNew');
           if (currentPage.showRemark) {
-            doc.text(remarkText, 50, yPos, { width: 500 });
+            doc.text('BOD: ' + remarkText, 50, yPos, { width: 500 });
           } else {
             doc.text('', 50, yPos, { width: 500 });
           }
