@@ -1303,7 +1303,7 @@ router.post('/WWT/CreateRequest', async (req, res) => {
     pushValue("SampDate", dataRow.SampDate);
     pushValue("SampNo", dataRow.SampNo);
     pushValue("SampName", dataRow.SampName);
-    pushValue("BottleNo", bottleStr);
+    pushValue("BottleNo", dataRow.BottleNo);
     pushValue("ItemNo", dataRow.ItemNo);
     pushValue("InsName", dataRow.InsName);
     pushValue("ItemName", dataRow.ItemName);
