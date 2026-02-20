@@ -142,6 +142,45 @@ router.post('/TLA/SETWWTITEM', async (req, res) => {
         "ITEMNAME": input['ITEMNAME'],
         "BOTTLENO": input['BOTTLENO'],
         "REPORTFORMAT": input['REPORTFORMAT'],
+        "LOQ": input['LOQ'],
+        "Blank": input['Blank'],
+        "Curve_Min": input['Curve_Min'],
+        "Curve_Max": input['Curve_Max'],
+        "STD_Min": input['STD_Min'],
+        "STD_Max": input['STD_Max'],
+        "QCS_Value_Min": input['QCS_Value_Min'],
+        "QCS_Value_Max": input['QCS_Value_Max'],
+        "QCS_Recovery_Min": input['QCS_Recovery_Min'],
+        "QCS_Recovery_Max": input['QCS_Recovery_Max'],
+        "CCV_CCS_CVS_Value": input['CCV_CCS_CVS_Value'],
+        "CCV_CCS_CVS_Min": input['CCV_CCS_CVS_Min'],
+        "CCV_CCS_CVS_Max": input['CCV_CCS_CVS_Max'],
+        "LFB_Value": input['LFB_Value'],
+        "LFB_Min": input['LFB_Min'],
+        "LFB_Max": input['LFB_Max'],
+        "LFM_Value": input['LFM_Value'],
+        "LFM_Min": input['LFM_Min'],
+        "LFM_Max": input['LFM_Max'],
+        "Diff_Min": input['Diff_Min'],
+        "Diff_Max": input['Diff_Max'],
+        "W2_W1_Min": input['W2_W1_Min'],
+        "W2_W1_Max": input['W2_W1_Max'],
+        "Blank_Seed_Min": input['Blank_Seed_Min'],
+        "Blank_Seed_Max": input['Blank_Seed_Max'],
+        "Seed_Control_Min": input['Seed_Control_Min'],
+        "Seed_Control_Max": input['Seed_Control_Max'],
+        "GGA_Check_Min": input['GGA_Check_Min'],
+        "GGA_Check_Max": input['GGA_Check_Max'],
+        "DO5": input['DO5'],
+        "DO0_DO5": input['DO0_DO5'],
+        "RPD": input['RPD'],
+        "R2": input['R2'],
+        "Slope_Min": input['Slope_Min'],
+        "Slope_Max": input['Slope_Max'],
+        "Temp_Min": input['Temp_Min'],
+        "Temp_Max": input['Temp_Max'],
+        "Report_Digit": input['Report_Digit'],
+        "Spec": input['Spec'],
         "masterID": UID,
         "activeid": "active_id"
 
@@ -201,11 +240,11 @@ router.post('/TLA/SETWWTITEM', async (req, res) => {
         ];
 
         fields.forEach((key) => {
-          if (input[key] !== undefined && input[key] !== "" && input[key] !== null) {
-            letsetdata[key] = input[key];
-          }
+          // if (input[key] !== undefined && input[key] !== "" && input[key] !== null) {
+          letsetdata[key] = input[key];
+          // }
         });
-
+        // console.log(letsetdata)
         if (Object.keys(letsetdata).length > 0) {
           await mongodb.update(
             "TALMASTER",
@@ -1929,9 +1968,9 @@ router.post('/WWT/getReqList', async (req, res) => {
 
   if (Bangpoo && Rayong) {
   } else if (Bangpoo) {
-    conditions.push(`ReqCode = 'ACB'`);
+    conditions.push(`ReqNo like '%ACB%'`);
   } else if (Rayong) {
-    conditions.push(`ReqCode = 'ACR'`);
+    conditions.push(`ReqNo like '%ACR%'`);
   } else {
     return res.status(400).json('ไม่พบข้อมูล');
   }
@@ -2251,6 +2290,8 @@ router.post('/WWT/listNewJob', async (req, res) => {
           pushField("Master_Report_Digit", master.Report_Digit);
         } else if (data.INSNAME === 'TF') {
           pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
           pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
           pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
           pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
@@ -2580,6 +2621,8 @@ router.post('/WWT/listInsertJob', async (req, res) => {
           pushField("Master_Report_Digit", master.Report_Digit);
         } else if (data.INSNAME === 'TF') {
           pushField("Master_LOQ", master.LOQ);
+          pushField("Master_Curve_Min", master.Curve_Min);
+          pushField("Master_Curve_Max", master.Curve_Max);
           pushField("Master_QCS_Value_Min", master.QCS_Value_Min);
           pushField("Master_QCS_Recovery_Min", master.QCS_Recovery_Min);
           pushField("Master_QCS_Recovery_Max", master.QCS_Recovery_Max);
@@ -10273,7 +10316,7 @@ router.post('/WWT/OutOfDue', async (req, res) => {
         AnalysisDue,
         ReportApproveDate
       FROM [WWT].[dbo].[Request]
-      WHERE YEAR(ReceivedDate) = ${year}
+      WHERE YEAR(ReceivedDate) = ${year} AND ReqStatus != 'CANCEL' AND ReqStatus != 'REJECT'
       ORDER BY ReceivedDate
     `;
     // console.log(query);
