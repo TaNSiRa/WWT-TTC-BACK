@@ -3581,11 +3581,13 @@ router.post('/WWT/TempSaveCOD', async (req, res) => {
       pushField("LFM2_Titrant_Blank_Sample", data.LFM2_Titrant_Blank_Sample);
       pushField("LFM2_Cal", data.LFM2_Cal);
       pushField("LFM2_Recovery", data.LFM2_Recovery);
+      pushField("No_1", data.No_1);
       pushField("Dilute_1", data.Dilute_1);
       pushField("SampleUse_1", data.SampleUse_1);
       pushField("Titrant_sample_1", data.Titrant_sample_1);
       pushField("Titrant_Blank_Sample_1", data.Titrant_Blank_Sample_1);
       pushField("Cal_1", data.Cal_1);
+      pushField("No_2", data.No_2);
       pushField("Dilute_2", data.Dilute_2);
       pushField("SampleUse_2", data.SampleUse_2);
       pushField("Titrant_sample_2", data.Titrant_sample_2);
