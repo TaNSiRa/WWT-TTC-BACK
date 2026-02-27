@@ -1,0 +1,124 @@
+{
+  "timestamp": "2026-02-27 14:13:44",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob:\n\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACB-260004-pH',\n[ReqCode] = N'ACB',\n[UserListJob] = N'Vipharat',\n[ListJobDate] = N'2026-02-27T14:13:44.840Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2216';\n      \n",
+  "data": {}
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 14:15:51",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260003-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T14:15:50.999Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2091';\n      \n"
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 14:17:03",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260003-pH',[ReqCode] = N'ACR',[UserListJob] = N'K.SIRAWIT',[ListJobDate] = N'2026-02-27T14:17:03.484Z',[ItemStatus] = N'LIST ITEM',[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2091';\n      \n"
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:03:35",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:03:35.589Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:03:35.589Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2242';\n      \n"
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:05:59",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:05:59.833Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2242';\n      \n\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:05:59.833Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n"
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:13:15",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:13:15.459Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:13:15.459Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2242';\n      \n"
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:15:30",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:15:30.495Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:15:30.495Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2242';\n      \n"
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:24:32",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n    BEGIN TRANSACTION;\n    BEGIN TRY\n      \n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:24:32.488Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:24:32.488Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2242';\n      \n\n      COMMIT TRANSACTION;\n    END TRY\n    BEGIN CATCH\n      ROLLBACK TRANSACTION;\n      THROW;\n    END CATCH\n    "
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:26:33",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n    BEGIN TRANSACTION;\n    BEGIN TRY\n      \n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:26:33.573Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:26:33.573Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2242';\n      \n\n      COMMIT TRANSACTION;\n    END TRY\n    BEGIN CATCH\n      ROLLBACK TRANSACTION;\n      THROW;\n    END CATCH\n    "
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:28:10",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n    BEGIN TRANSACTION;\n    BEGIN TRY\n      \n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:28:10.473Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:28:10.473Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2242';\n      \n\n      COMMIT TRANSACTION;\n    END TRY\n    BEGIN CATCH\n      ROLLBACK TRANSACTION;\n      THROW;\n    END CATCH\n    "
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:37:41",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n    BEGIN TRANSACTION;\n    BEGIN TRY\n      \n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:37:41.036Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n\n      COMMIT TRANSACTION;\n    END TRY\n    BEGIN CATCH\n      ROLLBACK TRANSACTION;\n      THROW;\n    END CATCH\n    "
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:39:57",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n    BEGIN TRANSACTION;\n    BEGIN TRY\n      \n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:39:57.514Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n\n      COMMIT TRANSACTION;\n    END TRY\n    BEGIN CATCH\n      ROLLBACK TRANSACTION;\n      THROW;\n    END CATCH\n    "
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 15:40:03",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n    BEGIN TRANSACTION;\n    BEGIN TRY\n      \n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T15:40:03.245Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2242';\n      \n\n      COMMIT TRANSACTION;\n    END TRY\n    BEGIN CATCH\n      ROLLBACK TRANSACTION;\n      THROW;\n    END CATCH\n    "
+  }
+}
+--------------------------------------------------
+{
+  "timestamp": "2026-02-27 16:54:09",
+  "level": "INFO",
+  "message": "Generated Update Queries for listNewJob",
+  "data": {
+    "Queries": "\n    BEGIN TRANSACTION;\n    BEGIN TRY\n      \n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T16:54:09.641Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2229';\n      \n\n      UPDATE [WWT].[dbo].[Request]\n      SET [JobCode] = N'JOB-ENV-ACR-260002-pH',\n[ReqCode] = N'ACR',\n[UserListJob] = N'K.SIRAWIT',\n[ListJobDate] = N'2026-02-27T16:54:09.641Z',\n[ItemStatus] = N'LIST ITEM',\n[JobStatus] = N'IN PROCESS'\n      WHERE ID = '2242';\n      \n\n      COMMIT TRANSACTION;\n    END TRY\n    BEGIN CATCH\n      ROLLBACK TRANSACTION;\n      THROW;\n    END CATCH\n    "
+  }
+}
+--------------------------------------------------

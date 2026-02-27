@@ -6,6 +6,7 @@ var mongodb = require('../../function/mongodb');
 var httpreq = require('../../function/axios');
 var axios = require('axios');
 const e = require("express");
+const logger = require("../../function/logFile");
 
 router.get('/TEST', async (req, res) => {
   // console.log(mssql.qurey())
@@ -2110,7 +2111,23 @@ router.post('/WWT/listNewJob', async (req, res) => {
       `;
       allQueries += query + '\n';
     }
-    let updateJobCode = await mssql.qurey(allQueries);
+
+    // ✅ ครอบด้วย Transaction
+    const transactionQuery = `
+    BEGIN TRANSACTION;
+    BEGIN TRY
+      ${allQueries}
+      COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+      ROLLBACK TRANSACTION;
+      THROW;
+    END CATCH
+    `;
+
+    logger.info(`Generated Update Queries for listNewJob`, { 'Queries': transactionQuery });
+    let updateJobCode = await mssql.qurey(transactionQuery);
+    const allUpdated = updateJobCode["rowsAffected"].every(affected => affected > 0);
 
     for (const data of dataRow) {
       const sampleCode = data.SAMPLECODE;
@@ -2165,7 +2182,7 @@ router.post('/WWT/listNewJob', async (req, res) => {
     }
     // console.log(allQueries);
     // STEP 2: CREATE INSERT QUERY
-    if (updateJobCode["rowsAffected"][0] > 0) {
+    if (allUpdated) {
       console.log("Update Success");
 
       let insertQuery = '';
@@ -2437,10 +2454,28 @@ router.post('/WWT/listInsertJob', async (req, res) => {
       UPDATE [WWT].[dbo].[Request]
       SET ${fields.join(',\n')}
       WHERE ID = '${data.ID}';
+      IF @@ROWCOUNT = 0
+        RAISERROR('Update failed for ID: ${data.ID}', 16, 1);
       `;
       allQueries += query + '\n';
     }
-    let updateJobCode = await mssql.qurey(allQueries);
+
+    // ✅ ครอบด้วย Transaction
+    const transactionQuery = `
+    BEGIN TRANSACTION;
+    BEGIN TRY
+      ${allQueries}
+      COMMIT TRANSACTION;
+    END TRY
+    BEGIN CATCH
+      ROLLBACK TRANSACTION;
+      THROW;
+    END CATCH
+    `;
+
+    logger.info(`Generated Update Queries for listNewJob`, { 'Queries': transactionQuery });
+    let updateJobCode = await mssql.qurey(transactionQuery);
+    const allUpdated = updateJobCode["rowsAffected"].every(affected => affected > 0);
 
     for (const data of dataRow) {
       const sampleCode = data.SAMPLECODE;
@@ -2496,7 +2531,7 @@ router.post('/WWT/listInsertJob', async (req, res) => {
 
     // console.log(allQueries);
     // STEP 2: CREATE INSERT QUERY
-    if (updateJobCode["rowsAffected"][0] > 0) {
+    if (allUpdated) {
       console.log("Update Success");
 
       let insertQuery = '';
