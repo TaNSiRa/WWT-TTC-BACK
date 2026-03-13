@@ -9683,7 +9683,7 @@ router.post('/WWT/historyGraph', async (req, res) => {
   let output = [];
   // console.log(req.body.data);
   let data = req.body.data;
-  let query = `SELECT TOP 10 * From [WWT].[dbo].[Request] 
+  let query = `SELECT TOP 30 * From [WWT].[dbo].[Request] 
                 WHERE CustName = '${data.CUSTNAME}' AND SampNo = '${data.SAMPNO}' AND SampName = '${data.SAMPNAME}' AND ItemName = '${data.ITEMNAME}'
                 AND ResultApprove != ''
                 ORDER BY SampDate`;
