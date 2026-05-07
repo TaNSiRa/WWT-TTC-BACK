@@ -10301,6 +10301,12 @@ router.post('/WWT/ItemByDueDate', async (req, res) => {
   };
 
   for (const row of db["recordset"]) {
+
+    const total = row.RECEIVE + row.WAITANALYSIS + row.WAITLISTRECHECK +
+      row.WAITRECHECK + row.WAITAPPROVEJOB + row.WAITAPPROVEREPORT;
+
+    if (total === 0) continue;
+
     const item = {
       DUEDATE: row.AnalysisDue,
       RECEIVE: row.RECEIVE,
