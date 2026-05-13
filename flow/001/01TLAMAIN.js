@@ -5295,6 +5295,7 @@ router.post('/WWT/SaveCOD', async (req, res) => {
       pushField("Cal_2", data.Cal_2);
       pushField("Avg", data.Avg);
       pushField("RPD", data.RPD);
+      pushField("Select_L", data.Select_L);
       pushField("UserAnalysis", analysisUser);
       pushField("AnalysisDate", now);
       pushField("Remark_Job", data.REMARKJOB);
