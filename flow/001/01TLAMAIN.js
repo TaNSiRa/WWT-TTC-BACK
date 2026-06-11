@@ -8,6 +8,90 @@ var axios = require('axios');
 const e = require("express");
 const logger = require("../../function/logFile");
 
+const RETURN_ALLOWED_ITEM_STATUSES = new Set(['LIST ITEM', 'LIST RECHECK']);
+
+function hasValue(value) {
+  return value !== null && value !== undefined && value.toString() !== '';
+}
+
+function sqlText(value) {
+  return `N'${value.toString().replace(/'/g, "''")}'`;
+}
+
+function sqlNullableText(value) {
+  return hasValue(value) ? sqlText(value) : 'NULL';
+}
+
+function safeTableName(value) {
+  if (!hasValue(value)) {
+    return '';
+  }
+  const tableName = value.toString();
+  return tableName.includes(']') || tableName.includes(';') || tableName.includes('--') ? '' : tableName;
+}
+
+function getReturnItemStatus(itemStatus) {
+  if (itemStatus === 'LIST ITEM') {
+    return 'RECEIVE SAMPLE';
+  }
+  if (itemStatus === 'LIST RECHECK') {
+    return 'RECHECK ITEM';
+  }
+  return '';
+}
+
+function getReqCodeFromBranch(branch) {
+  if (branch === 'TPK BANGPOO LAB') {
+    return 'ACB';
+  }
+  if (branch === 'TPK HES LAB') {
+    return 'ACR';
+  }
+  return '';
+}
+
+function isReturnLocked(row) {
+  return hasValue(row.JobApprover)
+    || hasValue(row.JobApproveDate)
+    || hasValue(row.ReportApprover)
+    || hasValue(row.ReportApproveDate)
+    || !RETURN_ALLOWED_ITEM_STATUSES.has(row.ItemStatus);
+}
+
+function buildReturnRequestUpdateQuery(row, baseJobCode) {
+  return `
+      UPDATE [WWT].[dbo].[Request]
+      SET [JobCode] = NULL,
+          [ReqCode] = ${sqlNullableText(getReqCodeFromBranch(row.ReqBranch))},
+          [UserListJob] = NULL,
+          [ListJobDate] = NULL,
+          [UserAnalysis] = NULL,
+          [AnalysisDate] = NULL,
+          [ItemStatus] = ${sqlText(getReturnItemStatus(row.ItemStatus))},
+          [JobStatus] = NULL
+      WHERE [ID] = ${sqlText(row.ID)}
+        AND [JobCode] = ${sqlText(baseJobCode)}
+        AND [ItemStatus] IN (N'LIST ITEM', N'LIST RECHECK')
+        AND ([JobApprover] IS NULL OR [JobApprover] = '')
+        AND ([ReportApprover] IS NULL OR [ReportApprover] = '')
+        AND ([JobApproveDate] IS NULL OR [JobApproveDate] = '')
+        AND ([ReportApproveDate] IS NULL OR [ReportApproveDate] = '');
+      IF @@ROWCOUNT = 0
+        THROW 51001, 'Return blocked because request status changed or approver already exists.', 1;
+  `;
+}
+
+function getReturnErrorStatus(err) {
+  const errorNumber = Number(err?.number || err?.originalError?.info?.number);
+  if (errorNumber === 51001) {
+    return 409;
+  }
+  if (errorNumber === 51002 || errorNumber === 51003) {
+    return 400;
+  }
+  return 500;
+}
+
 router.get('/TEST', async (req, res) => {
   // console.log(mssql.qurey())
   res.json("TEST");
@@ -2939,96 +3023,63 @@ router.post('/WWT/returnJob', async (req, res) => {
   console.log("--returnJob--");
 
   try {
-    let dataRow = JSON.parse(req.body.dataRow);
-    let insName = dataRow.INSNAME;
+    const dataRow = JSON.parse(req.body.dataRow);
+    const insName = safeTableName(dataRow.INSNAME);
     const baseJobCode = dataRow.JOBCODE;
-    let allQueries = '';
-    let itemStatusValue = '';
-    // STEP 1: UPDATE
 
-    let querySelect = `SELECT * From [WWT].[dbo].[Request] WHERE JobCode = '${baseJobCode}'`;
-    // console.log(querySelect);
-    let db = await mssql.qurey(querySelect);
-
-    if (db["recordsets"].length > 0) {
-      let buffer = db["recordsets"][0];
-      for (const data of buffer) {
-        let fields = [];
-        let itemStatus = data.ItemStatus;
-        let Branch = data.ReqBranch;
-        let reqCode = '';
-
-        function pushField(name, value) {
-          if (value !== '') {
-            const escapedValue = value.toString().replace(/'/g, "''");
-            fields.push(`[${name}] = N'${escapedValue}'`);
-          } else {
-            fields.push(`[${name}] = NULL`);
-          }
-        }
-
-        if (itemStatus === 'LIST ITEM') {
-          itemStatusValue = 'RECEIVE SAMPLE';
-        } else if (itemStatus === 'LIST RECHECK') {
-          itemStatusValue = 'RECHECK ITEM';
-        } else {
-          itemStatusValue = 'RECEIVE SAMPLE';
-        }
-
-        if (Branch === 'TPK BANGPOO LAB') {
-          reqCode = 'ACB';
-        } else if (Branch === 'TPK HES LAB') {
-          reqCode = 'ACR';
-        }
-
-        pushField("JobCode", '');
-        pushField("ReqCode", reqCode);
-        pushField("UserListJob", '');
-        pushField("ListJobDate", '');
-        pushField("UserAnalysis", '');
-        pushField("AnalysisDate", '');
-        pushField("ItemStatus", itemStatusValue);
-        pushField("JobStatus", '');
-
-        let query = `
-        UPDATE [WWT].[dbo].[Request]
-        SET ${fields.join(',\n')}
-        WHERE ID = '${data.ID}';
-        `;
-        allQueries += query + '\n';
-      }
-      let updateJobCode = await mssql.qurey(allQueries);
-      // console.log(allQueries);
-      // STEP 2: CREATE DELETE QUERY
-      if (updateJobCode["rowsAffected"][0] > 0) {
-        console.log("Update Success");
-
-        let query = `
-        DELETE FROM [WWT].[dbo].[${insName}] 
-        WHERE JobCode = '${baseJobCode}';
-        `;
-
-        // console.log(query);
-        let deleteResult = await mssql.qurey(query);
-
-        if (deleteResult["rowsAffected"][0] > 0) {
-          console.log("Insert Success");
-          return res.status(200).json({ message: baseJobCode });
-        } else {
-          console.log("Insert Failed");
-          return res.status(400).json('Insert ไม่สำเร็จ');
-        }
-
-      } else {
-        console.log("Update Failed");
-        return res.status(400).json('อัปเดทไม่สำเร็จ');
-      }
-    } else {
-      return res.status(400).json('ไม่พบข้อมูล');
+    if (!insName || !hasValue(baseJobCode)) {
+      return res.status(400).json({ message: 'Invalid return job payload' });
     }
+
+    const querySelect = `
+      SELECT *
+      FROM [WWT].[dbo].[Request]
+      WHERE [JobCode] = ${sqlText(baseJobCode)};
+    `;
+    const db = await mssql.qurey(querySelect);
+    const buffer = db.recordset || db.recordsets?.[0] || [];
+
+    if (buffer.length === 0) {
+      return res.status(400).json({ message: 'Job not found' });
+    }
+
+    const lockedRow = buffer.find(isReturnLocked);
+    if (lockedRow) {
+      return res.status(409).json({
+        message: 'Return blocked because this job already moved past LIST status or has an approver',
+        id: lockedRow.ID,
+        itemStatus: lockedRow.ItemStatus,
+      });
+    }
+
+    const updateQueries = buffer
+      .map((data) => buildReturnRequestUpdateQuery(data, baseJobCode))
+      .join('\n');
+    const transactionQuery = `
+      SET XACT_ABORT ON;
+      BEGIN TRANSACTION;
+      BEGIN TRY
+        ${updateQueries}
+
+        DELETE FROM [WWT].[dbo].[${insName}]
+        WHERE [JobCode] = ${sqlText(baseJobCode)};
+        IF @@ROWCOUNT = 0
+          THROW 51002, 'Return failed because instrument rows were not deleted.', 1;
+
+        COMMIT TRANSACTION;
+      END TRY
+      BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+      END CATCH
+    `;
+
+    await mssql.qurey(transactionQuery);
+    console.log("Return Job Success");
+    return res.status(200).json({ message: baseJobCode });
   } catch (err) {
     console.error(err);
-    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+    return res.status(getReturnErrorStatus(err)).json({ message: 'Return job failed', error: err.message });
   }
 });
 
@@ -3036,98 +3087,66 @@ router.post('/WWT/returnRequest', async (req, res) => {
   console.log("--returnRequest--");
 
   try {
-    let dataRow = JSON.parse(req.body.dataRow);
-    // console.log(dataRow);
-    let insName = dataRow.JOBCODE?.split('-').pop();
-    let ID = dataRow.ID;
-    let BottleCode = dataRow.BOTTLECODE;
+    const dataRow = JSON.parse(req.body.dataRow);
+    const insName = safeTableName(dataRow.JOBCODE?.split('-').pop());
+    const BottleCode = dataRow.BOTTLECODE;
     const baseJobCode = dataRow.JOBCODE;
-    let allQueries = '';
-    let itemStatusValue = '';
-    // STEP 1: UPDATE
-    let fields = [];
 
-    function pushField(name, value) {
-      if (value !== '') {
-        const escapedValue = value.toString().replace(/'/g, "''");
-        fields.push(`[${name}] = N'${escapedValue}'`);
-      } else {
-        fields.push(`[${name}] = NULL`);
-      }
+    if (!insName || !hasValue(BottleCode) || !hasValue(baseJobCode)) {
+      return res.status(400).json({ message: 'Invalid return request payload' });
     }
 
-    let querySelect = `SELECT * From [WWT].[dbo].[Request] WHERE  BottleCode = '${BottleCode}'`;
-    // console.log(querySelect);
-    let db = await mssql.qurey(querySelect);
+    const querySelect = `
+      SELECT *
+      FROM [WWT].[dbo].[Request]
+      WHERE [BottleCode] = ${sqlText(BottleCode)}
+        AND [JobCode] = ${sqlText(baseJobCode)};
+    `;
+    const db = await mssql.qurey(querySelect);
+    const buffer = db.recordset || db.recordsets?.[0] || [];
 
-    if (db["recordsets"].length > 0) {
-      let buffer = db["recordsets"][0];
-      for (const data of buffer) {
-        let itemStatus = data.ItemStatus;
-        let Branch = data.ReqBranch;
-        let reqCode = '';
-
-        if (itemStatus === 'LIST ITEM') {
-          itemStatusValue = 'RECEIVE SAMPLE';
-        } else if (itemStatus === 'LIST RECHECK') {
-          itemStatusValue = 'RECHECK ITEM';
-        } else {
-          itemStatusValue = 'RECEIVE SAMPLE';
-        }
-
-        if (Branch === 'TPK BANGPOO LAB') {
-          reqCode = 'ACB';
-        } else if (Branch === 'TPK HES LAB') {
-          reqCode = 'ACR';
-        }
-
-        pushField("JobCode", '');
-        pushField("ReqCode", reqCode);
-        pushField("UserListJob", '');
-        pushField("ListJobDate", '');
-        pushField("UserAnalysis", '');
-        pushField("AnalysisDate", '');
-        pushField("ItemStatus", itemStatusValue);
-        pushField("JobStatus", '');
-
-        let query = `
-      UPDATE [WWT].[dbo].[Request]
-      SET ${fields.join(',\n')}
-      WHERE ID = '${data.ID}';
-      `;
-        allQueries += query + '\n';
-        fields = [];
-      }
-      let updateJobCode = await mssql.qurey(allQueries);
-      // console.log(allQueries);
-      // STEP 2: CREATE DELETE QUERY
-      if (updateJobCode["rowsAffected"][0] > 0) {
-        console.log("Update Success");
-
-        let query = `
-        DELETE FROM [WWT].[dbo].[${insName}] 
-        WHERE BottleCode = '${BottleCode}' AND JobCode = '${baseJobCode}';
-        `;
-
-        // console.log(query);
-        let deleteResult = await mssql.qurey(query);
-
-        if (deleteResult["rowsAffected"][0] > 0) {
-          return res.status(200).json({ message: 'Success' });
-        } else {
-          return res.status(400).json('Delete ไม่สำเร็จ');
-        }
-
-      } else {
-        console.log("Update Failed");
-        return res.status(400).json('อัปเดทไม่สำเร็จ');
-      }
-    } else {
-      return res.status(400).json('ไม่พบข้อมูล');
+    if (buffer.length === 0) {
+      return res.status(400).json({ message: 'Request item not found' });
     }
+
+    const lockedRow = buffer.find(isReturnLocked);
+    if (lockedRow) {
+      return res.status(409).json({
+        message: 'Return blocked because this item already moved past LIST status or has an approver',
+        id: lockedRow.ID,
+        itemStatus: lockedRow.ItemStatus,
+      });
+    }
+
+    const updateQueries = buffer
+      .map((data) => buildReturnRequestUpdateQuery(data, baseJobCode))
+      .join('\n');
+    const transactionQuery = `
+      SET XACT_ABORT ON;
+      BEGIN TRANSACTION;
+      BEGIN TRY
+        ${updateQueries}
+
+        DELETE FROM [WWT].[dbo].[${insName}]
+        WHERE [BottleCode] = ${sqlText(BottleCode)}
+          AND [JobCode] = ${sqlText(baseJobCode)};
+        IF @@ROWCOUNT = 0
+          THROW 51003, 'Return failed because instrument rows were not deleted.', 1;
+
+        COMMIT TRANSACTION;
+      END TRY
+      BEGIN CATCH
+        IF @@TRANCOUNT > 0 ROLLBACK TRANSACTION;
+        THROW;
+      END CATCH
+    `;
+
+    await mssql.qurey(transactionQuery);
+    console.log("Return Request Success");
+    return res.status(200).json({ message: 'Success' });
   } catch (err) {
     console.error(err);
-    return res.status(500).json('เกิดข้อผิดพลาดภายในเซิร์ฟเวอร์');
+    return res.status(getReturnErrorStatus(err)).json({ message: 'Return request failed', error: err.message });
   }
 });
 
