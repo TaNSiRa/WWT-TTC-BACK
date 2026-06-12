@@ -10590,6 +10590,20 @@ router.post('/WWT/ItemByMonth', async (req, res) => {
     const plantList = ['Bangpoo', 'Rayong'];
     const reqTypeList = ['Routine', 'Service lab', 'Special'];
 
+    function createItemByMonthCustomerBucket() {
+      const bucket = {
+        rep1: 0,
+        rep2: 0,
+        Report: 0
+      };
+
+      for (const itemName of itemList) {
+        bucket[itemName] = 0;
+      }
+
+      return bucket;
+    }
+
     /* -------------------- 2. สร้างโครงสร้าง output -------------------- */
 
     const output = {};
@@ -10606,15 +10620,7 @@ router.post('/WWT/ItemByMonth', async (req, res) => {
             : nonRoutineCustList;
 
         for (const custName of custList) {
-          output[plant][reqType][custName] = {
-            rep1: 0,
-            rep2: 0,
-            Report: 0
-          };
-
-          for (const itemName of itemList) {
-            output[plant][reqType][custName][itemName] = 0;
-          }
+          output[plant][reqType][custName] = createItemByMonthCustomerBucket();
         }
       }
     }
@@ -10649,9 +10655,13 @@ router.post('/WWT/ItemByMonth', async (req, res) => {
       const itemName = row.ItemName;
       // console.log(plant, reqType, custName, itemName);
 
-      // กันข้อมูลที่ไม่อยู่ใน master structure
-      // if (!output[plant]?.[reqType]?.[custName]) continue;
-      // if (!output[plant][reqType][custName][itemName]) continue;
+      if (!reqTypeList.includes(reqType) || !custName || !itemName) continue;
+      if (!output[plant][reqType][custName]) {
+        output[plant][reqType][custName] = createItemByMonthCustomerBucket();
+      }
+      if (!Object.prototype.hasOwnProperty.call(output[plant][reqType][custName], itemName)) {
+        output[plant][reqType][custName][itemName] = 0;
+      }
 
       // ++ item
       output[plant][reqType][custName][itemName]++;
