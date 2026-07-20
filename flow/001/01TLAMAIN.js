@@ -4840,7 +4840,7 @@ router.post('/WWT/SavePH', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -4949,7 +4949,7 @@ router.post('/WWT/SaveTF', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -5088,7 +5088,7 @@ router.post('/WWT/SaveTDS', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -5227,7 +5227,7 @@ router.post('/WWT/SaveTSS', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -5359,7 +5359,7 @@ router.post('/WWT/SaveCOD', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -5853,7 +5853,7 @@ router.post('/WWT/SaveICP', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -6004,7 +6004,7 @@ router.post('/WWT/SaveOil', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -6121,7 +6121,7 @@ router.post('/WWT/SaveColor', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -6227,7 +6227,7 @@ router.post('/WWT/SaveEC', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -6329,7 +6329,7 @@ router.post('/WWT/SaveTEMP', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -6439,7 +6439,7 @@ router.post('/WWT/SaveIC', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
@@ -6590,7 +6590,7 @@ router.post('/WWT/SaveCN', async (req, res) => {
         let query = `
           UPDATE [WWT].[dbo].[Request]
           SET ${fields.join(',\n')}
-          WHERE ID = '${data.ID}';
+          WHERE ID = '${data.ID}' AND JobCode = '${data.JOBCODE}';
           `;
         updateQuery += query + '\n';
       }
