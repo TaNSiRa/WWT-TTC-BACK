@@ -4579,7 +4579,7 @@ router.post('/WWT/SaveBOD', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -4761,7 +4761,7 @@ router.post('/WWT/SavePH', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -4874,7 +4874,7 @@ router.post('/WWT/SaveTF', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -4983,7 +4983,7 @@ router.post('/WWT/SaveTDS', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -5122,7 +5122,7 @@ router.post('/WWT/SaveTSS', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -5261,7 +5261,7 @@ router.post('/WWT/SaveCOD', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -5393,7 +5393,7 @@ router.post('/WWT/SaveICP', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -5887,7 +5887,7 @@ router.post('/WWT/SaveOil', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -6038,7 +6038,7 @@ router.post('/WWT/SaveColor', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -6155,7 +6155,7 @@ router.post('/WWT/SaveEC', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -6261,7 +6261,7 @@ router.post('/WWT/SaveTEMP', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -6363,7 +6363,7 @@ router.post('/WWT/SaveIC', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -6473,7 +6473,7 @@ router.post('/WWT/SaveCN', async (req, res) => {
 
     let analysisUser = await getValidAnalysisUser(
       req.body.UserAnalysis,
-      dataRow[0].REQBRANCH
+      dataRow[0].ID
     );
 
     for (const data of dataRow) {
@@ -10873,12 +10873,7 @@ async function loadHolidays() {
   }
 }
 
-async function getValidAnalysisUser(userName, reqBranch) {
-  // แปลง Branch
-  let branch = reqBranch;
-  if (branch === 'TPK HES LAB') branch = 'RAYONG';
-  if (branch === 'TPK BANGPOO LAB') branch = 'BANGPOO';
-
+async function getValidAnalysisUser(userName, requestId) {
   // 1. เช็ค user ที่ส่งมาว่ามี RegistrationNo หรือไม่
   let checkUserQuery = `
     SELECT Name, RegistrationNo
@@ -10896,7 +10891,29 @@ async function getValidAnalysisUser(userName, reqBranch) {
     return userName;
   }
 
-  // 2. หา Default user ตาม Branch
+  // 2. ดึง ReqCode จาก Request แล้วแปลงเป็น Branch
+  let reqCode = '';
+  if (requestId !== '' && requestId !== null && requestId !== undefined) {
+    let reqCodeQuery = `
+      SELECT TOP 1 ReqCode
+      FROM [WWT].[dbo].[Request]
+      WHERE ID = N'${requestId.toString().replace(/'/g, "''")}'
+    `;
+    let reqCodeResult = await mssql.qurey(reqCodeQuery);
+    if (reqCodeResult.recordset.length > 0 && reqCodeResult.recordset[0].ReqCode) {
+      reqCode = reqCodeResult.recordset[0].ReqCode;
+    }
+  }
+
+  let branch = '';
+  if (reqCode === 'ACR') branch = 'RAYONG';
+  if (reqCode === 'ACB') branch = 'BANGPOO';
+
+  if (branch === '') {
+    return userName;
+  }
+
+  // 3. หา Default user ตาม Branch
   let defaultUserQuery = `
     SELECT TOP 1 Name
     FROM [SAR].[dbo].[Master_User]
@@ -10909,7 +10926,7 @@ async function getValidAnalysisUser(userName, reqBranch) {
     return defaultUser.recordset[0].Name;
   }
 
-  // 3. fallback (กรณีหาไม่ได้จริงๆ)
+  // 4. fallback (กรณีหาไม่ได้จริงๆ)
   return userName;
 }
 
